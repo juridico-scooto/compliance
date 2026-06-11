@@ -29,5 +29,7 @@ export const config = {
     "/historico/:path*",
     "/politicas/:path*",
     "/treinamentos/:path*",
+    "/perfil/:path*",
+    "/perfil",
   ],
 };
