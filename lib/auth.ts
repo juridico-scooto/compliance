@@ -21,7 +21,9 @@ export const authOptions: NextAuthOptions = {
         if (!user) return null;
         const valid = await bcrypt.compare(credentials.password, user.password);
         if (!valid) return null;
-        return { id: user.id, name: user.name, email: user.email, role: user.role } as { id: string; name: string; email: string; role: string };
+        return { id: user.id, name: user.name, email: user.email, role: user.role } as {
+          id: string; name: string; email: string; role: string;
+        };
       },
     }),
   ],
@@ -41,4 +43,6 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
+  // Garante que os cookies funcionem corretamente em produção HTTPS
+  useSecureCookies: process.env.NEXTAUTH_URL?.startsWith("https://") ?? false,
 };

@@ -7,8 +7,12 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
+  if (!session) {
+    return NextResponse.json({ error: "Sessão expirada. Faça login novamente." }, { status: 401 });
+  }
+  if (session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Acesso restrito a administradores." }, { status: 403 });
   }
 
   const { cnpj, representante } = await req.json();
@@ -17,17 +21,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "CNPJ inválido." }, { status: 400 });
   }
 
+  // Etapa 1: consultar BrasilAPI
+  let data;
   try {
-    const data = await consultarCNPJ(cnpj);
+    data = await consultarCNPJ(cnpj);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Erro ao consultar a Receita Federal.";
+    console.error("[CNPJ] BrasilAPI error:", msg);
+    return NextResponse.json({ error: msg }, { status: 502 });
+  }
 
-    const ativa = data.descricao_situacao_cadastral?.toLowerCase() === "ativa";
-    const repFound = representante ? repNoQSA(data.qsa, representante) : null;
+  // Etapa 2: calcular resultado
+  const ativa = data.descricao_situacao_cadastral?.toLowerCase() === "ativa";
+  const repFound = representante ? repNoQSA(data.qsa, representante) : null;
 
-    let resultado: "OK" | "ATENCAO" | "IRREGULAR";
-    if (!ativa) resultado = "IRREGULAR";
-    else if (representante && !repFound) resultado = "ATENCAO";
-    else resultado = "OK";
+  let resultado: "OK" | "ATENCAO" | "IRREGULAR";
+  if (!ativa) resultado = "IRREGULAR";
+  else if (representante && !repFound) resultado = "ATENCAO";
+  else resultado = "OK";
 
+  // Etapa 3: salvar no banco
+  try {
     const consulta = await prisma.consulta.create({
       data: {
         cnpj: cnpj.replace(/\D/g, ""),
@@ -37,10 +51,11 @@ export async function POST(req: NextRequest) {
         usuarioId: session.user.id,
       },
     });
-
     return NextResponse.json({ consulta, data, resultado, repFound });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Erro inesperado.";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    const msg = e instanceof Error ? e.message : "Erro ao salvar no banco.";
+    console.error("[CNPJ] DB error:", msg);
+    // Retorna o resultado mesmo sem salvar para não travar o usuário
+    return NextResponse.json({ data, resultado, repFound, dbError: true });
   }
 }
