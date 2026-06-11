@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Topbar from "@/components/topbar";
 import { prisma } from "@/lib/prisma";
-import { formatCNPJ, fmtDate } from "@/lib/utils";
+import { formatCNPJ } from "@/lib/utils";
 import Link from "next/link";
 
 const resultadoLabel: Record<string, { label: string; className: string }> = {
