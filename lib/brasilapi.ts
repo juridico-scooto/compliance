@@ -32,14 +32,40 @@ export interface BrasilApiCNPJ {
 
 export async function consultarCNPJ(cnpj: string): Promise<BrasilApiCNPJ> {
   const digits = cnpj.replace(/\D/g, "");
-  const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`, {
-    next: { revalidate: 0 },
-  });
 
-  if (!res.ok) {
-    if (res.status === 404) throw new Error("CNPJ não encontrado na base da Receita Federal.");
-    throw new Error("Erro ao consultar a Receita Federal. Tente novamente.");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`, {
+      signal: controller.signal,
+      headers: {
+        "Accept": "application/json",
+        "User-Agent": "scooto-compliance/1.0",
+      },
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error(`[BrasilAPI] status=${res.status} body=${body.slice(0, 200)}`);
+
+      if (res.status === 404) {
+        throw new Error("CNPJ não encontrado na base da Receita Federal.");
+      }
+      if (res.status === 429) {
+        throw new Error("Limite de consultas atingido. Aguarde alguns segundos e tente novamente.");
+      }
+      throw new Error(`Erro ${res.status} ao consultar a Receita Federal. Tente novamente.`);
+    }
+
+    return res.json();
+  } catch (e: unknown) {
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new Error("Timeout: a Receita Federal demorou para responder. Tente novamente.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  return res.json();
 }
