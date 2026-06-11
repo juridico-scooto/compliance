@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String     @id @default(cuid())
+  name      String
+  email     String     @unique
+  password  String
+  role      Role       @default(SCOOTEIRA)
+  createdAt DateTime   @default(now())
+  consultas Consulta[]
+}
+
+enum Role {
+  ADMIN
+  SCOOTEIRA
+}
+
+model Consulta {
+  id            String    @id @default(cuid())
+  cnpj          String
+  representante String?
+  resultado     Resultado
+  dadosJson     Json
+  criadoEm      DateTime  @default(now())
+  usuarioId     String
+  usuario       User      @relation(fields: [usuarioId], references: [id])
+
+  @@index([cnpj])
+  @@index([criadoEm])
+  @@index([resultado])
+}
+
+enum Resultado {
+  OK
+  ATENCAO
+  IRREGULAR
+}
