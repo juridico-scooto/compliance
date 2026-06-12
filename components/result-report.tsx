@@ -1,16 +1,20 @@
 "use client";
 
 import { BrasilApiCNPJ } from "@/lib/brasilapi";
+import { ComplianceResult } from "@/lib/compliance";
 import { formatCNPJ, fmtDate } from "@/lib/utils";
 import StatusBanner from "./status-banner";
 import { InfoCard, Pill } from "./info-card";
 import QSATable from "./qsa-table";
+import ComplianceSection from "./compliance-section";
 
 interface ResultReportProps {
   data: BrasilApiCNPJ;
   resultado: "OK" | "ATENCAO" | "IRREGULAR";
   representante?: string;
+  cpfRepresentante?: string;
   repFound: boolean | null;
+  compliance: ComplianceResult;
   timestamp: string;
   userName?: string;
 }
@@ -19,23 +23,29 @@ export default function ResultReport({
   data,
   resultado,
   representante,
+  cpfRepresentante,
   repFound,
+  compliance,
   timestamp,
   userName,
 }: ResultReportProps) {
   const ativa = data.descricao_situacao_cadastral?.toLowerCase() === "ativa";
 
+  const temSancao = compliance?.ceis?.encontrado || compliance?.cnep?.encontrado || compliance?.ceisRep?.encontrado || compliance?.pep?.encontrado;
+  const atencaoSubtitle = temSancao
+    ? "A empresa ou seu representante possui ocorrências em bases de compliance federal. Avalie antes de prosseguir."
+    : "A empresa está ativa, mas o representante indicado não consta como sócio ou administrador. Solicite procuração com poderes específicos.";
+
   const bannerProps = {
     OK: {
       type: "ok" as const,
       title: "Verificação concluída — Sem impedimentos cadastrais",
-      subtitle: `Empresa ativa na Receita Federal${representante ? " e representante confirmado no QSA" : ""}.`,
+      subtitle: `Empresa ativa na Receita Federal${representante ? " e representante confirmado no QSA" : ""}. Nenhuma ocorrência nas bases de compliance.`,
     },
     ATENCAO: {
       type: "warn" as const,
-      title: "Empresa ativa — Representante não localizado no QSA",
-      subtitle:
-        "A empresa está ativa, mas o representante indicado não consta como sócio ou administrador. Solicite procuração com poderes específicos.",
+      title: "Atenção — Pontos de verificação identificados",
+      subtitle: atencaoSubtitle,
     },
     IRREGULAR: {
       type: "fail" as const,
@@ -190,31 +200,12 @@ export default function ResultReport({
           </div>
         )}
 
-        {/* Compliance futuro */}
-        <div className="col-span-full bg-white border-[1.5px] border-[var(--gray-border)] rounded-card overflow-hidden">
-          <div className="px-[18px] py-3 border-b border-[var(--gray-border)] flex items-center gap-2 bg-[var(--off-white)]">
-            <div className="w-[26px] h-[26px] rounded-[7px] bg-[var(--violet-light)] flex items-center justify-center shrink-0">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-[13px] h-[13px] text-[var(--violet)]">
-                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-            </div>
-            <span className="text-[11px] font-extrabold text-[var(--text-primary)] uppercase tracking-[0.07em]">
-              Verificações de Compliance — Em implementação
-            </span>
-          </div>
-          <div className="px-[18px] py-3.5">
-            <div className="flex gap-2 flex-wrap">
-              {["CEIS · Sancionados Federais", "CNEP · Improbidade", "Listas OFAC", "PEP · Expostos Politicamente", "Processos Judiciais", "Interpol"].map((tag) => (
-                <span key={tag} className="inline-flex items-center gap-1 px-[9px] py-[3px] rounded-full text-[11px] font-bold bg-[var(--gray-light)] text-[var(--text-secondary)] before:content-[''] before:w-1.5 before:h-1.5 before:rounded-full before:bg-current">
-                  {tag}
-                </span>
-              ))}
-            </div>
-            <p className="text-[11px] font-medium text-[var(--text-secondary)] mt-2.5 leading-relaxed">
-              Estas verificações serão integradas progressivamente ao relatório. O resultado final consolidará todas as fontes em um único parecer de compliance.
-            </p>
-          </div>
-        </div>
+        {/* Compliance */}
+        <ComplianceSection
+          compliance={compliance}
+          representante={representante}
+          cpfRepresentante={cpfRepresentante}
+        />
       </div>
     </div>
   );
