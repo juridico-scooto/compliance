@@ -41,7 +41,7 @@ export interface ComplianceResult {
 async function get(path: string): Promise<unknown> {
   if (!KEY) throw new Error("chave_ausente");
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "chave-de-acesso": KEY, Accept: "application/json" },
+    headers: { "chave-api-dados": KEY, Accept: "application/json" },
     cache: "no-store",
     signal: AbortSignal.timeout(10000),
   });
