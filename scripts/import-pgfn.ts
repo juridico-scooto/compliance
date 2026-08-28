@@ -18,14 +18,22 @@ import * as path from "path";
 const prisma = new PrismaClient();
 
 // Detecta o trimestre atual automaticamente (Jan-Mar=01, Abr-Jun=02, Jul-Set=03, Out-Dez=04)
+// PGFN publica com ~2 meses de atraso, então usa o trimestre anterior se estiver no 1º mês do tri
 function trimestreeAtual(): string {
   const env = process.env.PGFN_TRIMESTRE;
   if (env) return env;
   const now = new Date();
   const ano = now.getFullYear();
   const mes = now.getMonth() + 1;
-  const tri = mes <= 3 ? "01" : mes <= 6 ? "02" : mes <= 9 ? "03" : "04";
-  return `${ano}_trimestre_${tri}`;
+  // Se estiver no 1º mês do trimestre (jan, abr, jul, out), usa o trimestre anterior
+  const primeiroMesTri = [1, 4, 7, 10].includes(mes);
+  let tri: string;
+  let anoFinal = ano;
+  if (mes <= 3) { tri = primeiroMesTri ? "04" : "01"; if (primeiroMesTri) anoFinal = ano - 1; }
+  else if (mes <= 6) { tri = primeiroMesTri ? "01" : "02"; }
+  else if (mes <= 9) { tri = primeiroMesTri ? "02" : "03"; }
+  else { tri = primeiroMesTri ? "03" : "04"; }
+  return `${anoFinal}_trimestre_${tri}`;
 }
 
 const TRIMESTRE = trimestreeAtual();
@@ -50,8 +58,19 @@ const TMP = path.join(process.cwd(), "tmp_pgfn");
 const BATCH = 500;
 
 function baixarArquivo(url: string, destino: string): void {
-  console.log(`  Baixando com curl...`);
+  console.log(`  Baixando com curl: ${url}`);
   execSync(`curl -L --progress-bar -o "${destino}" "${url}"`, { stdio: "inherit" });
+  // Valida magic bytes do ZIP (PK = 0x50 0x4B)
+  const buf = Buffer.alloc(4);
+  const fd = fs.openSync(destino, "r");
+  fs.readSync(fd, buf, 0, 4, 0);
+  fs.closeSync(fd);
+  if (buf[0] !== 0x50 || buf[1] !== 0x4B) {
+    const preview = fs.readFileSync(destino, { encoding: "utf8" }).slice(0, 500);
+    throw new Error(`Arquivo não é um ZIP válido. Resposta do servidor:\n${preview}`);
+  }
+  const tamanho = fs.statSync(destino).size;
+  console.log(`  Download OK (${(tamanho / 1024 / 1024).toFixed(1)} MB)`);
 }
 
 function extrairZip(zipPath: string, destDir: string): void {
