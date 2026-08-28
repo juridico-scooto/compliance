@@ -3,6 +3,8 @@ import { ComplianceResult } from "@/lib/compliance";
 function fmtDate(s: string): string {
   if (!s) return "—";
   try {
+    // Já está no formato DD/MM/YYYY
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
     // Formato YYYY-MM-DD — evita problema de fuso horário
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
       const [y, m, d] = s.split("-");

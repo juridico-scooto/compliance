@@ -74,6 +74,7 @@ async function get(path: string): Promise<unknown> {
     signal: AbortSignal.timeout(10000),
   });
   if (res.status === 401) throw new Error("chave_invalida");
+  if (res.status === 403) throw new Error("acesso_negado");
   if (res.status === 429) throw new Error("rate_limit");
   if (!res.ok) throw new Error(`api_${res.status}`);
   const data = await res.json();
@@ -85,6 +86,7 @@ async function get(path: string): Promise<unknown> {
 function erroLabel(msg: string): string {
   if (msg === "chave_ausente") return "Chave do Portal da Transparência não configurada.";
   if (msg === "chave_invalida") return "Chave inativa ou inválida. Verifique o e-mail de ativação.";
+  if (msg === "acesso_negado") return "Acesso não habilitado. Solicite permissão no Portal da Transparência.";
   if (msg === "rate_limit") return "Limite de requisições atingido. Tente novamente em instantes.";
   return "Erro ao consultar o Portal da Transparência.";
 }
@@ -230,13 +232,15 @@ export async function verificarCEPIM(cnpj: string): Promise<ComplianceResult["ce
     const lista: unknown[] = Array.isArray(data) ? data : ((data as { data?: unknown[] }).data ?? []);
     const registros: CEPIMRegistro[] = lista.map((r: unknown) => {
       const item = r as Record<string, unknown>;
+      const pj = (item.pessoaJuridica as Record<string, unknown>) ?? {};
+      const orgao = (item.orgaoSuperior as Record<string, unknown>) ?? {};
       return {
-        nome: String(item.nomeConvenente ?? item.nome ?? "—"),
-        cnpj: String(item.cnpjConvenente ?? item.cnpj ?? "—"),
-        motivoImpedimento: String((item.motivoImpedimento as Record<string, unknown>)?.descricao ?? item.motivoImpedimento ?? "—"),
-        dataInicioImpedimento: String(item.dataInicioImpedimento ?? ""),
+        nome: String(pj.nome ?? item.nomeConvenente ?? item.nome ?? "—"),
+        cnpj: String(pj.cnpjFormatado ?? pj.cnpj ?? item.cnpjConvenente ?? "—"),
+        motivoImpedimento: String(item.motivo ?? (item.motivoImpedimento as Record<string, unknown>)?.descricao ?? item.motivoImpedimento ?? "—"),
+        dataInicioImpedimento: String(item.dataReferencia ?? item.dataInicioImpedimento ?? ""),
         dataFimImpedimento: String(item.dataFimImpedimento ?? ""),
-        orgaoConcedente: String((item.orgaoConcedente as Record<string, unknown>)?.nome ?? item.orgaoConcedente ?? "—"),
+        orgaoConcedente: String(orgao.nome ?? (item.orgaoConcedente as Record<string, unknown>)?.nome ?? item.orgaoConcedente ?? "—"),
       };
     });
     return { verificado: true, encontrado: registros.length > 0, registros };
