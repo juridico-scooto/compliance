@@ -105,7 +105,7 @@ export default function ComplianceSection({ compliance, representante, cpfRepres
       </div>
       <div className="px-[18px] py-1">
 
-        <p className="text-[10px] font-bold text-[var(--gray-mid)] uppercase tracking-widest pt-3 pb-1">Empresa (CNPJ)</p>
+        <p className="text-[10px] font-bold text-[var(--gray-mid)] uppercase tracking-widest pt-3 pb-1">Sanções e Restrições (CNPJ)</p>
 
         <CheckRow
           label="CEIS — Cadastro de Empresas Inidôneas e Suspensas"
@@ -116,6 +116,24 @@ export default function ComplianceSection({ compliance, representante, cpfRepres
           label="CNEP — Cadastro Nacional de Empresas Punidas"
           detail="Punições por improbidade administrativa"
           result={compliance.cnep}
+        />
+        <CheckRow
+          label="CEPIM — Entidades Impedidas de Receber Convênios Federais"
+          detail="Empresas bloqueadas de receber recursos públicos federais"
+          result={compliance.cepim}
+        />
+
+        <p className="text-[10px] font-bold text-[var(--gray-mid)] uppercase tracking-widest pt-4 pb-1">Trabalhista e Fiscal (CNPJ)</p>
+
+        <CheckRow
+          label="Lista Suja do Trabalho Escravo (MTE)"
+          detail="Autuações por submissão a condições análogas à escravidão"
+          result={compliance.trabalhoEscravo}
+        />
+        <CheckRow
+          label="Devedores da Dívida Ativa da União (PGFN)"
+          detail="Débitos inscritos na Procuradoria-Geral da Fazenda Nacional"
+          result={compliance.devedoresPGFN}
         />
 
         {temRepresentante && (
@@ -143,8 +161,7 @@ export default function ComplianceSection({ compliance, representante, cpfRepres
         )}
 
         <p className="text-[10px] text-[var(--gray-mid)] py-3 font-medium leading-relaxed border-t border-[var(--gray-light)] mt-2">
-          Fontes: CGU/Portal da Transparência · CEIS · CNEP · PEP federal.
-          Em breve: OFAC · Interpol · Processos judiciais.
+          Fontes: CGU/Portal da Transparência · CEIS · CNEP · CEPIM · MTE (Trabalho Escravo) · PGFN · PEP federal.
         </p>
       </div>
     </div>

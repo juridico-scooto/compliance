@@ -31,11 +31,39 @@ export interface CNEPRegistro {
   orgaoSancionador: string;
 }
 
+export interface TrabalhoEscravoRegistro {
+  nomeEmpresa: string;
+  cnpj: string;
+  ano: number;
+  uf: string;
+  decisaoAdministrativaFazendaria: string;
+}
+
+export interface DevedorPGFNRegistro {
+  nome: string;
+  cnpjCpf: string;
+  tipoDevedor: string;
+  valorConsolidado: number;
+  situacaoInscricao: string;
+}
+
+export interface CEPIMRegistro {
+  nome: string;
+  cnpj: string;
+  motivoImpedimento: string;
+  dataInicioImpedimento: string;
+  dataFimImpedimento: string;
+  orgaoConcedente: string;
+}
+
 export interface ComplianceResult {
   pep: { verificado: boolean; encontrado: boolean; registros: PEPRegistro[]; erro?: string };
   ceis: { verificado: boolean; encontrado: boolean; registros: CEISRegistro[]; erro?: string };
   cnep: { verificado: boolean; encontrado: boolean; registros: CNEPRegistro[]; erro?: string };
   ceisRep: { verificado: boolean; encontrado: boolean; registros: CEISRegistro[]; erro?: string };
+  trabalhoEscravo: { verificado: boolean; encontrado: boolean; registros: TrabalhoEscravoRegistro[]; erro?: string };
+  devedoresPGFN: { verificado: boolean; encontrado: boolean; registros: DevedorPGFNRegistro[]; erro?: string };
+  cepim: { verificado: boolean; encontrado: boolean; registros: CEPIMRegistro[]; erro?: string };
 }
 
 async function get(path: string): Promise<unknown> {
@@ -150,17 +178,87 @@ export async function verificarCNEP(cnpj: string): Promise<ComplianceResult["cne
   }
 }
 
+// ── Trabalho Escravo (MTE) ───────────────────────────────────────────────────
+export async function verificarTrabalhoEscravo(cnpj: string): Promise<ComplianceResult["trabalhoEscravo"]> {
+  try {
+    const digits = cnpj.replace(/\D/g, "");
+    const data = (await get(`/lista-de-empresas-autuadas-por-trabalho-analogo-ao-de-escravo?cnpjCpf=${digits}&pagina=1&tamanhoPagina=10`)) as unknown[];
+    const lista: unknown[] = Array.isArray(data) ? data : [];
+    const registros: TrabalhoEscravoRegistro[] = lista.map((r: unknown) => {
+      const item = r as Record<string, unknown>;
+      return {
+        nomeEmpresa: String(item.nomeEmpresa ?? item.nome ?? "—"),
+        cnpj: String(item.cnpj ?? "—"),
+        ano: Number(item.ano ?? 0),
+        uf: String(item.uf ?? "—"),
+        decisaoAdministrativaFazendaria: String(item.decisaoAdministrativaFazendaria ?? "—"),
+      };
+    });
+    return { verificado: true, encontrado: registros.length > 0, registros };
+  } catch (e: unknown) {
+    return { verificado: false, encontrado: false, registros: [], erro: erroLabel(e instanceof Error ? e.message : "") };
+  }
+}
+
+// ── Devedores PGFN ───────────────────────────────────────────────────────────
+export async function verificarDevedoresPGFN(cnpj: string): Promise<ComplianceResult["devedoresPGFN"]> {
+  try {
+    const digits = cnpj.replace(/\D/g, "");
+    const data = (await get(`/lista-de-devedores-a-divida-ativa-da-uniao?cnpjCpf=${digits}&pagina=1&tamanhoPagina=10`)) as unknown[] | { data?: unknown[] };
+    const lista: unknown[] = Array.isArray(data) ? data : ((data as { data?: unknown[] }).data ?? []);
+    const registros: DevedorPGFNRegistro[] = lista.map((r: unknown) => {
+      const item = r as Record<string, unknown>;
+      return {
+        nome: String(item.nome ?? item.nomeDevedor ?? "—"),
+        cnpjCpf: String(item.cnpjCpf ?? item.cpfCnpj ?? "—"),
+        tipoDevedor: String(item.tipoDevedor ?? "—"),
+        valorConsolidado: Number(item.valorConsolidado ?? 0),
+        situacaoInscricao: String(item.situacaoInscricao ?? "—"),
+      };
+    });
+    return { verificado: true, encontrado: registros.length > 0, registros };
+  } catch (e: unknown) {
+    return { verificado: false, encontrado: false, registros: [], erro: erroLabel(e instanceof Error ? e.message : "") };
+  }
+}
+
+// ── CEPIM: Empresas impedidas de receber convênios federais ─────────────────
+export async function verificarCEPIM(cnpj: string): Promise<ComplianceResult["cepim"]> {
+  try {
+    const digits = cnpj.replace(/\D/g, "");
+    const data = (await get(`/cepim?cnpjCpf=${digits}&pagina=1&tamanhoPagina=10`)) as unknown[] | { data?: unknown[] };
+    const lista: unknown[] = Array.isArray(data) ? data : ((data as { data?: unknown[] }).data ?? []);
+    const registros: CEPIMRegistro[] = lista.map((r: unknown) => {
+      const item = r as Record<string, unknown>;
+      return {
+        nome: String(item.nomeConvenente ?? item.nome ?? "—"),
+        cnpj: String(item.cnpjConvenente ?? item.cnpj ?? "—"),
+        motivoImpedimento: String((item.motivoImpedimento as Record<string, unknown>)?.descricao ?? item.motivoImpedimento ?? "—"),
+        dataInicioImpedimento: String(item.dataInicioImpedimento ?? ""),
+        dataFimImpedimento: String(item.dataFimImpedimento ?? ""),
+        orgaoConcedente: String((item.orgaoConcedente as Record<string, unknown>)?.nome ?? item.orgaoConcedente ?? "—"),
+      };
+    });
+    return { verificado: true, encontrado: registros.length > 0, registros };
+  } catch (e: unknown) {
+    return { verificado: false, encontrado: false, registros: [], erro: erroLabel(e instanceof Error ? e.message : "") };
+  }
+}
+
 // ── Orquestrador principal ───────────────────────────────────────────────────
 export async function runComplianceChecks(
   cnpj: string,
   representante?: string,
   cpfRepresentante?: string
 ): Promise<ComplianceResult> {
-  const [ceis, cnep, pep, ceisRep] = await Promise.all([
+  const [ceis, cnep, pep, ceisRep, trabalhoEscravo, devedoresPGFN, cepim] = await Promise.all([
     verificarCEIS(cnpj, true),
     verificarCNEP(cnpj),
     representante ? verificarPEP(representante, cpfRepresentante) : Promise.resolve({ verificado: false, encontrado: false, registros: [] }),
     representante ? verificarCEIS(representante, false) : Promise.resolve({ verificado: false, encontrado: false, registros: [] }),
+    verificarTrabalhoEscravo(cnpj),
+    verificarDevedoresPGFN(cnpj),
+    verificarCEPIM(cnpj),
   ]);
-  return { pep, ceis, cnep, ceisRep };
+  return { pep, ceis, cnep, ceisRep, trabalhoEscravo, devedoresPGFN, cepim };
 }

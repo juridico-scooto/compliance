@@ -32,7 +32,13 @@ export async function POST(req: NextRequest) {
   const repFound = representante ? repNoQSA(data.qsa, representante) : null;
 
   // Resultado considera também CEIS/CNEP
-  const temSancao = compliance.ceis.encontrado || compliance.cnep.encontrado || compliance.ceisRep.encontrado;
+  const temSancao =
+    compliance.ceis.encontrado ||
+    compliance.cnep.encontrado ||
+    compliance.ceisRep.encontrado ||
+    compliance.trabalhoEscravo.encontrado ||
+    compliance.cepim.encontrado ||
+    compliance.devedoresPGFN.encontrado;
 
   let resultado: "OK" | "ATENCAO" | "IRREGULAR";
   if (!ativa) resultado = "IRREGULAR";
