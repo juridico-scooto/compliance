@@ -182,7 +182,7 @@ export async function verificarCNEP(cnpj: string): Promise<ComplianceResult["cne
 export async function verificarTrabalhoEscravo(cnpj: string): Promise<ComplianceResult["trabalhoEscravo"]> {
   try {
     const digits = cnpj.replace(/\D/g, "");
-    const data = (await get(`/trabalho-escravo?cnpjCpf=${digits}&pagina=1&tamanhoPagina=10`)) as unknown[];
+    const data = (await get(`/mte-trabalho-escravo?cnpjCpf=${digits}&pagina=1&tamanhoPagina=10`)) as unknown[];
     const lista: unknown[] = Array.isArray(data) ? data : [];
     const registros: TrabalhoEscravoRegistro[] = lista.map((r: unknown) => {
       const item = r as Record<string, unknown>;
@@ -204,7 +204,7 @@ export async function verificarTrabalhoEscravo(cnpj: string): Promise<Compliance
 export async function verificarDevedoresPGFN(cnpj: string): Promise<ComplianceResult["devedoresPGFN"]> {
   try {
     const digits = cnpj.replace(/\D/g, "");
-    const data = (await get(`/pgfn?cnpjCpf=${digits}&pagina=1&tamanhoPagina=10`)) as unknown[] | { data?: unknown[] };
+    const data = (await get(`/pgfn-devedores?cnpjCpf=${digits}&pagina=1&tamanhoPagina=10`)) as unknown[] | { data?: unknown[] };
     const lista: unknown[] = Array.isArray(data) ? data : ((data as { data?: unknown[] }).data ?? []);
     const registros: DevedorPGFNRegistro[] = lista.map((r: unknown) => {
       const item = r as Record<string, unknown>;
