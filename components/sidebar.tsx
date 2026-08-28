@@ -71,6 +71,21 @@ const navItems = [
     ],
   },
   {
+    section: "Sistema",
+    items: [
+      {
+        href: "/admin",
+        label: "Administração",
+        adminOnly: true,
+        icon: (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 shrink-0">
+            <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+          </svg>
+        ),
+      },
+    ],
+  },
+  {
     section: "Conta",
     items: [
       {

@@ -1,0 +1,46 @@
+name: Importar PGFN — Dívida Ativa
+
+on:
+  # Roda automaticamente no 1º dia de cada trimestre (Jan, Abr, Jul, Out)
+  schedule:
+    - cron: "0 6 1 1,4,7,10 *"
+
+  # Permite disparar manualmente pelo painel admin ou pelo GitHub
+  workflow_dispatch:
+    inputs:
+      trimestre:
+        description: "Trimestre (ex: 2026_trimestre_01)"
+        required: false
+        default: ""
+
+jobs:
+  importar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Gerar Prisma Client
+        run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+      - name: Rodar importação PGFN
+        run: npx ts-node scripts/import-pgfn.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          PGFN_TRIMESTRE: ${{ github.event.inputs.trimestre }}
+        timeout-minutes: 110

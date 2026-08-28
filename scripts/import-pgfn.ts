@@ -19,17 +19,31 @@ import * as http from "http";
 
 const prisma = new PrismaClient();
 
+// Detecta o trimestre atual automaticamente (Jan-Mar=01, Abr-Jun=02, Jul-Set=03, Out-Dez=04)
+function trimestreeAtual(): string {
+  const env = process.env.PGFN_TRIMESTRE;
+  if (env) return env;
+  const now = new Date();
+  const ano = now.getFullYear();
+  const mes = now.getMonth() + 1;
+  const tri = mes <= 3 ? "01" : mes <= 6 ? "02" : mes <= 9 ? "03" : "04";
+  return `${ano}_trimestre_${tri}`;
+}
+
+const TRIMESTRE = trimestreeAtual();
+console.log(`Trimestre: ${TRIMESTRE}`);
+
 const ARQUIVOS = [
   {
-    url: "https://dadosabertos.pgfn.gov.br/2026_trimestre_01/Dados_abertos_Nao_Previdenciario.zip",
+    url: `https://dadosabertos.pgfn.gov.br/${TRIMESTRE}/Dados_abertos_Nao_Previdenciario.zip`,
     tipo: "NaoPrevidenciario",
   },
   {
-    url: "https://dadosabertos.pgfn.gov.br/2026_trimestre_01/Dados_abertos_Previdenciario.zip",
+    url: `https://dadosabertos.pgfn.gov.br/${TRIMESTRE}/Dados_abertos_Previdenciario.zip`,
     tipo: "Previdenciario",
   },
   {
-    url: "https://dadosabertos.pgfn.gov.br/2026_trimestre_01/Dados_abertos_FGTS.zip",
+    url: `https://dadosabertos.pgfn.gov.br/${TRIMESTRE}/Dados_abertos_FGTS.zip`,
     tipo: "FGTS",
   },
 ];
