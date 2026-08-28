@@ -14,8 +14,6 @@ import { execSync } from "child_process";
 import * as fs from "fs";
 import * as readline from "readline";
 import * as path from "path";
-import * as https from "https";
-import * as http from "http";
 
 const prisma = new PrismaClient();
 
@@ -51,42 +49,9 @@ const ARQUIVOS = [
 const TMP = path.join(process.cwd(), "tmp_pgfn");
 const BATCH = 500;
 
-function baixarArquivo(url: string, destino: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const arquivo = fs.createWriteStream(destino);
-    const protocolo = url.startsWith("https") ? https : http;
-
-    function request(u: string) {
-      protocolo.get(u, (res) => {
-        if (res.statusCode === 301 || res.statusCode === 302) {
-          request(res.headers.location!);
-          return;
-        }
-        const total = parseInt(res.headers["content-length"] ?? "0");
-        let baixado = 0;
-        let ultimo = 0;
-
-        res.on("data", (chunk: Buffer) => {
-          baixado += chunk.length;
-          const pct = total ? Math.floor((baixado / total) * 100) : 0;
-          if (pct !== ultimo && pct % 5 === 0) {
-            process.stdout.write(`\r  Baixando... ${pct}% (${(baixado / 1e6).toFixed(0)}MB)`);
-            ultimo = pct;
-          }
-        });
-
-        res.pipe(arquivo);
-        res.on("end", () => {
-          console.log();
-          resolve();
-        });
-        res.on("error", reject);
-      }).on("error", reject);
-    }
-
-    request(url);
-    arquivo.on("error", reject);
-  });
+function baixarArquivo(url: string, destino: string): void {
+  console.log(`  Baixando com curl...`);
+  execSync(`curl -L --progress-bar -o "${destino}" "${url}"`, { stdio: "inherit" });
 }
 
 function extrairZip(zipPath: string, destDir: string): void {
@@ -211,7 +176,7 @@ async function main() {
       console.log(`  ZIP já existe, pulando download.`);
     } else {
       console.log(`  Baixando ${nomeZip}...`);
-      await baixarArquivo(url, zipPath);
+      baixarArquivo(url, zipPath);
     }
 
     // Extração
