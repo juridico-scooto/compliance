@@ -181,15 +181,46 @@ export async function verificarCNEP(cnpj: string): Promise<ComplianceResult["cne
 }
 
 // ── Trabalho Escravo (MTE) ───────────────────────────────────────────────────
-// Não disponível via API do Portal da Transparência — consulta manual em:
-// https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/escravidao/listadetransparencia
-export async function verificarTrabalhoEscravo(_cnpj: string): Promise<ComplianceResult["trabalhoEscravo"]> {
-  return {
-    verificado: false,
-    encontrado: false,
-    registros: [],
-    erro: "Consulta manual necessária — não disponível via API pública.",
-  };
+const MTE_CSV_URL =
+  "https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/areas-de-atuacao/cadastro_de_empregadores.csv";
+
+// Cache em memória (persiste entre invocações warm no serverless)
+let escravoCache: { data: TrabalhoEscravoRegistro[]; ts: number } | null = null;
+const ESCRAVO_TTL = 6 * 60 * 60 * 1000; // 6h
+
+async function fetchListaEscravo(): Promise<TrabalhoEscravoRegistro[]> {
+  if (escravoCache && Date.now() - escravoCache.ts < ESCRAVO_TTL) return escravoCache.data;
+  const res = await fetch(MTE_CSV_URL, { cache: "no-store", signal: AbortSignal.timeout(15000) });
+  if (!res.ok) throw new Error(`mte_${res.status}`);
+  const buf = await res.arrayBuffer();
+  const text = new TextDecoder("iso-8859-1").decode(buf);
+  const data: TrabalhoEscravoRegistro[] = text
+    .split("\n")
+    .slice(1)
+    .filter(l => l.trim())
+    .map(line => {
+      const c = line.split(";");
+      return {
+        nomeEmpresa: (c[3] ?? "").trim(),
+        cnpj: (c[4] ?? "").trim(),
+        ano: parseInt(c[1] ?? "0") || 0,
+        uf: (c[2] ?? "").trim(),
+        decisaoAdministrativaFazendaria: (c[8] ?? "").trim(),
+      };
+    });
+  escravoCache = { data, ts: Date.now() };
+  return data;
+}
+
+export async function verificarTrabalhoEscravo(cnpj: string): Promise<ComplianceResult["trabalhoEscravo"]> {
+  try {
+    const digits = cnpj.replace(/\D/g, "");
+    const lista = await fetchListaEscravo();
+    const registros = lista.filter(r => r.cnpj.replace(/\D/g, "") === digits);
+    return { verificado: true, encontrado: registros.length > 0, registros };
+  } catch (e: unknown) {
+    return { verificado: false, encontrado: false, registros: [], erro: erroLabel(e instanceof Error ? e.message : "") };
+  }
 }
 
 // ── Devedores PGFN ───────────────────────────────────────────────────────────

@@ -54,17 +54,21 @@ function CheckRow({ label, result, detail }: CheckRowProps) {
         {/* Mini-table com os registros */}
         <div className="bg-[var(--red-bg)] border border-[#F5B8CC] rounded-sm overflow-hidden text-[11px]">
           {result.registros.slice(0, 5).map((r, i) => {
-            const row = r as Record<string, string>;
+            const row = r as Record<string, string | number>;
+            const nome = String(row.nome ?? row.nomeInformadoOrgaoSancionador ?? row.nomeEmpresa ?? "—");
+            const detalhe = [
+              row.cargo ? `${row.cargo} · ${row.orgao}` : "",
+              row.tipoSancao ? `${row.tipoSancao} · ${row.orgaoSancionador}` : "",
+              row.situacao ? String(row.situacao) : "",
+              row.dataInicioSancao ? `Desde ${fmtDate(String(row.dataInicioSancao))}` : "",
+              row.dataInicio ? fmtDate(String(row.dataInicio)) : "",
+              row.ano ? `Ano ${row.ano} · ${row.uf}` : "",
+              row.decisaoAdministrativaFazendaria ? String(row.decisaoAdministrativaFazendaria) : "",
+            ].filter(Boolean).join(" · ");
             return (
               <div key={i} className="px-3 py-2 border-b border-[#F5B8CC] last:border-0">
-                <p className="font-bold text-[#8B0030]">{row.nome ?? row.nomeInformadoOrgaoSancionador ?? "—"}</p>
-                <p className="text-[#A0003A] mt-0.5">
-                  {row.cargo ? `${row.cargo} · ${row.orgao}` : ""}
-                  {row.tipoSancao ? `${row.tipoSancao} · ${row.orgaoSancionador}` : ""}
-                  {row.situacao ? ` · ${row.situacao}` : ""}
-                  {row.dataInicioSancao ? ` · Desde ${fmtDate(row.dataInicioSancao)}` : ""}
-                  {row.dataInicio ? ` · ${fmtDate(row.dataInicio)}` : ""}
-                </p>
+                <p className="font-bold text-[#8B0030]">{nome}</p>
+                {detalhe && <p className="text-[#A0003A] mt-0.5">{detalhe}</p>}
               </div>
             );
           })}
@@ -136,20 +140,11 @@ export default function ComplianceSection({ compliance, representante, cpfRepres
 
         <p className="text-[10px] font-bold text-[var(--gray-mid)] uppercase tracking-widest pt-4 pb-1">Trabalhista e Fiscal (CNPJ)</p>
 
-        <div className="flex items-center justify-between py-3 border-b border-[var(--gray-light)]">
-          <div>
-            <p className="text-[12px] font-bold text-[var(--text-primary)]">Lista Suja do Trabalho Escravo (MTE)</p>
-            <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">Autuações por submissão a condições análogas à escravidão</p>
-          </div>
-          <a
-            href="https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/escravidao/listadetransparencia"
-            target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-[11px] font-bold px-[9px] py-[3px] rounded-full bg-[var(--yellow-bg)] text-[#7A4E00] hover:opacity-80 transition-opacity"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3 h-3"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            Consultar manualmente
-          </a>
-        </div>
+        <CheckRow
+          label="Lista Suja do Trabalho Escravo (MTE)"
+          detail="Autuações por submissão a condições análogas à escravidão"
+          result={compliance.trabalhoEscravo}
+        />
 
         <div className="flex items-center justify-between py-3 border-b border-[var(--gray-light)]">
           <div>
