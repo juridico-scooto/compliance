@@ -53,9 +53,17 @@ export default function AdminPage() {
   if (status === "loading" || !isAdmin) return null;
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="text-[20px] font-extrabold text-[var(--text-primary)] mb-1">Administração</h1>
-      <p className="text-[13px] text-[var(--text-secondary)] mb-6">Gerenciamento de bases de dados do sistema.</p>
+    <>
+      {/* Topbar */}
+      <div className="sticky top-0 z-40 bg-white border-b border-[var(--gray-border)] px-8 py-4 flex items-center gap-3">
+        <div>
+          <h1 className="text-[15px] font-extrabold text-[var(--text-primary)] leading-tight">Administração</h1>
+          <p className="text-[12px] text-[var(--text-secondary)]">Gerenciamento de bases de dados do sistema</p>
+        </div>
+      </div>
+
+      <div className="p-8 flex-1">
+      <div className="max-w-2xl">
 
       {/* Card PGFN */}
       <div className="bg-white rounded-card border border-[var(--gray-border)] overflow-hidden">
@@ -132,6 +140,7 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
