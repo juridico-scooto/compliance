@@ -154,8 +154,9 @@ async function importarCSV(csvPath: string, tipo: string): Promise<number> {
 async function main() {
   console.log("=== Importação PGFN — Dívida Ativa da União ===\n");
 
-  // Garante diretório temporário
-  if (!fs.existsSync(TMP)) fs.mkdirSync(TMP);
+  // Garante diretório temporário limpo
+  if (fs.existsSync(TMP)) fs.rmSync(TMP, { recursive: true, force: true });
+  fs.mkdirSync(TMP);
 
   // Limpa tabela antes de reimportar
   console.log("Limpando tabela anterior...");
@@ -172,12 +173,8 @@ async function main() {
     console.log(`\n── ${tipo} ──`);
 
     // Download
-    if (fs.existsSync(zipPath)) {
-      console.log(`  ZIP já existe, pulando download.`);
-    } else {
-      console.log(`  Baixando ${nomeZip}...`);
-      baixarArquivo(url, zipPath);
-    }
+    console.log(`  Baixando ${nomeZip}...`);
+    baixarArquivo(url, zipPath);
 
     // Extração
     if (!fs.existsSync(extDir)) fs.mkdirSync(extDir);
