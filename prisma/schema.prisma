@@ -43,3 +43,19 @@ enum Resultado {
   ATENCAO
   IRREGULAR
 }
+
+model PgfnDevedor {
+  id                Int      @id @default(autoincrement())
+  cpfCnpj           String
+  nomeDevedor       String
+  ufDevedor         String?
+  tipoDevedor       String?
+  situacaoInscricao String?
+  tipoSituacao      String?
+  valorConsolidado  String?
+  dataInscricao     String?
+  indicadorAjuizado String?
+  tipoDivida        String   // NaoPrevidenciario | Previdenciario | FGTS
+
+  @@index([cpfCnpj])
+}

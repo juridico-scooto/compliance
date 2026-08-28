@@ -1,5 +1,12 @@
+import { PrismaClient } from "@prisma/client";
+
 const BASE = "https://api.portaldatransparencia.gov.br/api-de-dados";
 const KEY = process.env.PORTAL_TRANSPARENCIA_KEY ?? "";
+
+// Singleton Prisma para serverless
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+const prisma = globalForPrisma.prisma ?? new PrismaClient();
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
 export interface PEPRegistro {
   nome: string;
@@ -224,15 +231,45 @@ export async function verificarTrabalhoEscravo(cnpj: string): Promise<Compliance
 }
 
 // ── Devedores PGFN ───────────────────────────────────────────────────────────
-// Não disponível via API do Portal da Transparência — consulta manual em:
-// https://www.pgfn.gov.br/certidoes
-export async function verificarDevedoresPGFN(_cnpj: string): Promise<ComplianceResult["devedoresPGFN"]> {
-  return {
-    verificado: false,
-    encontrado: false,
-    registros: [],
-    erro: "Consulta manual necessária — não disponível via API pública.",
-  };
+// Consulta a tabela pgfn_devedores no Supabase (importada via scripts/import-pgfn.ts)
+export async function verificarDevedoresPGFN(cnpj: string): Promise<ComplianceResult["devedoresPGFN"]> {
+  try {
+    const digits = cnpj.replace(/\D/g, "");
+    const rows = await prisma.pgfnDevedor.findMany({
+      where: { cpfCnpj: digits },
+      take: 10,
+    });
+
+    // Verifica se a tabela tem dados (se não tiver, a importação ainda não foi rodada)
+    if (rows.length === 0) {
+      const count = await prisma.pgfnDevedor.count();
+      if (count === 0) {
+        return {
+          verificado: false,
+          encontrado: false,
+          registros: [],
+          erro: "Base PGFN não importada. Execute: npx ts-node scripts/import-pgfn.ts",
+        };
+      }
+    }
+
+    const registros: DevedorPGFNRegistro[] = rows.map(r => ({
+      nome: r.nomeDevedor,
+      cnpjCpf: r.cpfCnpj,
+      tipoDevedor: r.tipoDevedor ?? r.tipoDivida,
+      valorConsolidado: parseFloat(r.valorConsolidado?.replace(",", ".") ?? "0") || 0,
+      situacaoInscricao: r.situacaoInscricao ?? "—",
+    }));
+
+    return { verificado: true, encontrado: registros.length > 0, registros };
+  } catch (e: unknown) {
+    return {
+      verificado: false,
+      encontrado: false,
+      registros: [],
+      erro: erroLabel(e instanceof Error ? e.message : ""),
+    };
+  }
 }
 
 // ── CEPIM: Empresas impedidas de receber convênios federais ─────────────────
