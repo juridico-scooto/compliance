@@ -136,16 +136,35 @@ export default function ComplianceSection({ compliance, representante, cpfRepres
 
         <p className="text-[10px] font-bold text-[var(--gray-mid)] uppercase tracking-widest pt-4 pb-1">Trabalhista e Fiscal (CNPJ)</p>
 
-        <CheckRow
-          label="Lista Suja do Trabalho Escravo (MTE)"
-          detail="Autuações por submissão a condições análogas à escravidão"
-          result={compliance.trabalhoEscravo}
-        />
-        <CheckRow
-          label="Devedores da Dívida Ativa da União (PGFN)"
-          detail="Débitos inscritos na Procuradoria-Geral da Fazenda Nacional"
-          result={compliance.devedoresPGFN}
-        />
+        <div className="flex items-center justify-between py-3 border-b border-[var(--gray-light)]">
+          <div>
+            <p className="text-[12px] font-bold text-[var(--text-primary)]">Lista Suja do Trabalho Escravo (MTE)</p>
+            <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">Autuações por submissão a condições análogas à escravidão</p>
+          </div>
+          <a
+            href="https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/escravidao/listadetransparencia"
+            target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-[11px] font-bold px-[9px] py-[3px] rounded-full bg-[var(--yellow-bg)] text-[#7A4E00] hover:opacity-80 transition-opacity"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3 h-3"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Consultar manualmente
+          </a>
+        </div>
+
+        <div className="flex items-center justify-between py-3 border-b border-[var(--gray-light)]">
+          <div>
+            <p className="text-[12px] font-bold text-[var(--text-primary)]">Devedores da Dívida Ativa da União (PGFN)</p>
+            <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">Débitos inscritos na Procuradoria-Geral da Fazenda Nacional</p>
+          </div>
+          <a
+            href="https://www.pgfn.gov.br/certidoes"
+            target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-[11px] font-bold px-[9px] py-[3px] rounded-full bg-[var(--yellow-bg)] text-[#7A4E00] hover:opacity-80 transition-opacity"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3 h-3"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Consultar manualmente
+          </a>
+        </div>
 
         {temRepresentante && (
           <>

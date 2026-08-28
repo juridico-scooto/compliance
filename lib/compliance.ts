@@ -181,47 +181,27 @@ export async function verificarCNEP(cnpj: string): Promise<ComplianceResult["cne
 }
 
 // ── Trabalho Escravo (MTE) ───────────────────────────────────────────────────
-export async function verificarTrabalhoEscravo(cnpj: string): Promise<ComplianceResult["trabalhoEscravo"]> {
-  try {
-    const digits = cnpj.replace(/\D/g, "");
-    const data = (await get(`/mte-trabalho-escravo?cnpjCpf=${digits}&pagina=1&tamanhoPagina=10`)) as unknown[];
-    const lista: unknown[] = Array.isArray(data) ? data : [];
-    const registros: TrabalhoEscravoRegistro[] = lista.map((r: unknown) => {
-      const item = r as Record<string, unknown>;
-      return {
-        nomeEmpresa: String(item.nomeEmpresa ?? item.nome ?? "—"),
-        cnpj: String(item.cnpj ?? "—"),
-        ano: Number(item.ano ?? 0),
-        uf: String(item.uf ?? "—"),
-        decisaoAdministrativaFazendaria: String(item.decisaoAdministrativaFazendaria ?? "—"),
-      };
-    });
-    return { verificado: true, encontrado: registros.length > 0, registros };
-  } catch (e: unknown) {
-    return { verificado: false, encontrado: false, registros: [], erro: erroLabel(e instanceof Error ? e.message : "") };
-  }
+// Não disponível via API do Portal da Transparência — consulta manual em:
+// https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/escravidao/listadetransparencia
+export async function verificarTrabalhoEscravo(_cnpj: string): Promise<ComplianceResult["trabalhoEscravo"]> {
+  return {
+    verificado: false,
+    encontrado: false,
+    registros: [],
+    erro: "Consulta manual necessária — não disponível via API pública.",
+  };
 }
 
 // ── Devedores PGFN ───────────────────────────────────────────────────────────
-export async function verificarDevedoresPGFN(cnpj: string): Promise<ComplianceResult["devedoresPGFN"]> {
-  try {
-    const digits = cnpj.replace(/\D/g, "");
-    const data = (await get(`/pgfn-devedores?cnpjCpf=${digits}&pagina=1&tamanhoPagina=10`)) as unknown[] | { data?: unknown[] };
-    const lista: unknown[] = Array.isArray(data) ? data : ((data as { data?: unknown[] }).data ?? []);
-    const registros: DevedorPGFNRegistro[] = lista.map((r: unknown) => {
-      const item = r as Record<string, unknown>;
-      return {
-        nome: String(item.nome ?? item.nomeDevedor ?? "—"),
-        cnpjCpf: String(item.cnpjCpf ?? item.cpfCnpj ?? "—"),
-        tipoDevedor: String(item.tipoDevedor ?? "—"),
-        valorConsolidado: Number(item.valorConsolidado ?? 0),
-        situacaoInscricao: String(item.situacaoInscricao ?? "—"),
-      };
-    });
-    return { verificado: true, encontrado: registros.length > 0, registros };
-  } catch (e: unknown) {
-    return { verificado: false, encontrado: false, registros: [], erro: erroLabel(e instanceof Error ? e.message : "") };
-  }
+// Não disponível via API do Portal da Transparência — consulta manual em:
+// https://www.pgfn.gov.br/certidoes
+export async function verificarDevedoresPGFN(_cnpj: string): Promise<ComplianceResult["devedoresPGFN"]> {
+  return {
+    verificado: false,
+    encontrado: false,
+    registros: [],
+    erro: "Consulta manual necessária — não disponível via API pública.",
+  };
 }
 
 // ── CEPIM: Empresas impedidas de receber convênios federais ─────────────────
