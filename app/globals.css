@@ -42,6 +42,54 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--gray-border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--gray-mid); }
 
+/* ── Print / PDF ────────────────────────────────────────────────────────── */
+@media print {
+  /* Esconde tudo que não é o relatório */
+  nav, aside,
+  [data-sidebar],
+  [class*="sidebar"],
+  header,
+  .topbar,
+  /* Formulário de nova consulta e botões de ação */
+  [data-no-print],
+  button {
+    display: none !important;
+  }
+
+  /* Remove a margem do main que compensava a sidebar */
+  main {
+    margin-left: 0 !important;
+    padding: 0 !important;
+  }
+
+  body {
+    background: white !important;
+    font-size: 11px;
+  }
+
+  /* Garante que cards não sejam cortados entre páginas */
+  .rounded-card, [class*="rounded-card"] {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Cores ficam visíveis no PDF */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Oculta a topbar */
+  [class*="topbar"] {
+    display: none !important;
+  }
+
+  @page {
+    margin: 16mm;
+    size: A4;
+  }
+}
+
 /* Spinner */
 @keyframes spin { to { transform: rotate(360deg); } }
 .spinner {

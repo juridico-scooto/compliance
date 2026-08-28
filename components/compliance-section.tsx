@@ -2,7 +2,16 @@ import { ComplianceResult } from "@/lib/compliance";
 
 function fmtDate(s: string): string {
   if (!s) return "—";
-  try { return new Date(s).toLocaleDateString("pt-BR"); } catch { return s; }
+  try {
+    // Formato YYYY-MM-DD — evita problema de fuso horário
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      const [y, m, d] = s.split("-");
+      return `${d}/${m}/${y}`;
+    }
+    const dt = new Date(s);
+    if (isNaN(dt.getTime())) return "—";
+    return dt.toLocaleDateString("pt-BR");
+  } catch { return "—"; }
 }
 
 interface CheckRowProps {

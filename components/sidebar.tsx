@@ -97,6 +97,7 @@ export default function Sidebar() {
 
   return (
     <aside
+      data-sidebar
       className="fixed top-0 left-0 bottom-0 z-50 flex flex-col bg-white border-r border-[var(--gray-border)]"
       style={{ width: "var(--sidebar-w)" }}
     >

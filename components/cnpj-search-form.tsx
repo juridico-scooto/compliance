@@ -85,7 +85,7 @@ export default function CNPJSearchForm() {
   return (
     <div>
       {/* Search Card */}
-      <div className="bg-white rounded-card border border-[var(--gray-border)] px-7 py-[26px] mb-5 relative overflow-hidden">
+      <div data-no-print className="bg-white rounded-card border border-[var(--gray-border)] px-7 py-[26px] mb-5 relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: "linear-gradient(90deg, var(--violet), var(--magenta), var(--orange))" }} />
         <h2 className="text-[15px] font-extrabold text-[var(--text-primary)] mb-1">Nova Consulta</h2>
         <p className="text-[12px] text-[var(--text-secondary)] mb-5">
@@ -172,7 +172,7 @@ export default function CNPJSearchForm() {
       {/* Result */}
       {result && (
         <div>
-          <div className="flex items-center justify-between mb-3.5">
+          <div data-no-print className="flex items-center justify-between mb-3.5">
             <h2 className="text-[15px] font-extrabold text-[var(--text-primary)]">Resultado da Verificação</h2>
             <div className="flex gap-2.5">
               <button onClick={nova} className="inline-flex items-center gap-1.5 px-3.5 py-[7px] rounded-sm text-[12px] font-bold text-[var(--text-secondary)] border-[1.5px] border-[var(--gray-border)] bg-transparent hover:bg-[var(--gray-light)] hover:text-[var(--text-primary)] transition-all">
