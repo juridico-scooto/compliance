@@ -17,23 +17,22 @@ import * as path from "path";
 
 const prisma = new PrismaClient();
 
-// Detecta o trimestre atual automaticamente (Jan-Mar=01, Abr-Jun=02, Jul-Set=03, Out-Dez=04)
-// PGFN publica com ~2 meses de atraso, então usa o trimestre anterior se estiver no 1º mês do tri
+// Detecta o trimestre mais recente disponível na PGFN.
+// A PGFN publica com ~3 meses de atraso: em agosto/2026, Q3 ainda não saiu, usa Q2.
+// Lógica: subtrai 1 trimestre do trimestre atual (conservador e confiável).
 function trimestreeAtual(): string {
   const env = process.env.PGFN_TRIMESTRE;
   if (env) return env;
   const now = new Date();
   const ano = now.getFullYear();
   const mes = now.getMonth() + 1;
-  // Se estiver no 1º mês do trimestre (jan, abr, jul, out), usa o trimestre anterior
-  const primeiroMesTri = [1, 4, 7, 10].includes(mes);
-  let tri: string;
+  // Trimestre atual (1-4)
+  const triAtual = mes <= 3 ? 1 : mes <= 6 ? 2 : mes <= 9 ? 3 : 4;
+  // Usa o trimestre ANTERIOR (PGFN demora a publicar)
+  let tri = triAtual - 1;
   let anoFinal = ano;
-  if (mes <= 3) { tri = primeiroMesTri ? "04" : "01"; if (primeiroMesTri) anoFinal = ano - 1; }
-  else if (mes <= 6) { tri = primeiroMesTri ? "01" : "02"; }
-  else if (mes <= 9) { tri = primeiroMesTri ? "02" : "03"; }
-  else { tri = primeiroMesTri ? "03" : "04"; }
-  return `${anoFinal}_trimestre_${tri}`;
+  if (tri <= 0) { tri = 4; anoFinal = ano - 1; }
+  return `${anoFinal}_trimestre_${String(tri).padStart(2, "0")}`;
 }
 
 const TRIMESTRE = trimestreeAtual();
