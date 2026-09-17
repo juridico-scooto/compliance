@@ -43,7 +43,7 @@ export default function AdminPage() {
       } else {
         setMsg({ tipo: "erro", texto: d.error });
       }
-    } catch {
+    } catch (_e) {
       setMsg({ tipo: "erro", texto: "Falha na requisição." });
     } finally {
       setLoading(false);
@@ -139,6 +139,7 @@ export default function AdminPage() {
             </a>
           </div>
         </div>
+      </div>
       </div>
       </div>
     </>
