@@ -17,8 +17,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Arquivo excede 10MB." }, { status: 400 });
   }
 
-  const ext = file.name.split(".").pop() ?? "bin";
-  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  // Preserva o nome original, sanitizando caracteres problemáticos
+  const nomeSeguro = file.name
+    .normalize("NFD").replace(/[̀-ͯ]/g, "") // remove acentos
+    .replace(/[^a-zA-Z0-9._\- ]/g, "_")              // caracteres especiais → _
+    .replace(/\s+/g, "_");                             // espaços → _
+  const fileName = `${Date.now()}_${nomeSeguro}`;
   const buffer = await file.arrayBuffer();
 
   const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${fileName}`, {

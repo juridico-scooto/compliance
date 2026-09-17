@@ -47,7 +47,9 @@ function prazoClass(prazo: string | null) {
 }
 
 function nomeArquivo(url: string) {
-  return decodeURIComponent(url.split("/").pop() ?? url).replace(/^\d+-[a-z0-9]+\./, "");
+  const nome = decodeURIComponent(url.split("/").pop() ?? url);
+  // Remove prefixo de timestamp (ex: 1789676286137_nome.docx → nome.docx)
+  return nome.replace(/^\d+_/, "");
 }
 
 export default function DemandasPage() {
