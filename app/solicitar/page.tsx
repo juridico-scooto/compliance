@@ -4,7 +4,6 @@ import { useState, useRef } from "react";
 
 const TIPO_LABEL: Record<string, string> = {
   CONTRATO: "Contrato",
-  PROCESSO: "Processo",
   CONSULTA_JURIDICA: "Consulta Jurídica",
   DOCUMENTO: "Documento",
   OUTRO: "Outro",
