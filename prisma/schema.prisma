@@ -16,6 +16,7 @@ model User {
   role      Role       @default(SCOOTEIRA)
   createdAt DateTime   @default(now())
   consultas Consulta[]
+  demandas  Demanda[]
 }
 
 enum Role {
@@ -42,6 +43,50 @@ enum Resultado {
   OK
   ATENCAO
   IRREGULAR
+}
+
+model Demanda {
+  id           String        @id @default(cuid())
+  titulo       String
+  descricao    String
+  tipo         TipoDemanda
+  prioridade   Prioridade    @default(NORMAL)
+  status       StatusDemanda @default(PENDENTE)
+  solicitante  String        // nome livre (sem login)
+  setor        String?
+  responsavelId String?
+  responsavel  User?         @relation(fields: [responsavelId], references: [id])
+  prazo        DateTime?
+  notas        String?
+  criadoEm     DateTime      @default(now())
+  atualizadoEm DateTime      @updatedAt
+
+  @@index([status])
+  @@index([responsavelId])
+  @@index([criadoEm])
+}
+
+enum TipoDemanda {
+  CONTRATO
+  PROCESSO
+  CONSULTA_JURIDICA
+  DOCUMENTO
+  OUTRO
+}
+
+enum Prioridade {
+  BAIXA
+  NORMAL
+  ALTA
+  URGENTE
+}
+
+enum StatusDemanda {
+  PENDENTE
+  EM_ANDAMENTO
+  AGUARDANDO
+  CONCLUIDO
+  CANCELADO
 }
 
 model PgfnDevedor {
