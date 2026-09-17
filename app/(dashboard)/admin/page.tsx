@@ -17,6 +17,7 @@ export default function AdminPage() {
     if (status === "unauthenticated") { router.push("/login"); return; }
     if (status === "authenticated" && !isAdmin) { router.push("/due-diligence"); return; }
     if (isAdmin) fetchStatus();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, isAdmin]);
 
   async function fetchStatus() {
@@ -43,7 +44,7 @@ export default function AdminPage() {
       } else {
         setMsg({ tipo: "erro", texto: d.error });
       }
-    } catch (_e) {
+    } catch {
       setMsg({ tipo: "erro", texto: "Falha na requisição." });
     } finally {
       setLoading(false);

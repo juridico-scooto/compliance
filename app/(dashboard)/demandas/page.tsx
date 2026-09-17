@@ -75,7 +75,7 @@ function prazoClass(prazo: string | null, status: string) {
 }
 
 export default function DemandasPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const [demandas, setDemandas] = useState<Demanda[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,6 +92,7 @@ export default function DemandasPage() {
   useEffect(() => {
     if (status === "unauthenticated") { router.push("/login"); return; }
     if (status === "authenticated") { carregar(); carregarUsuarios(); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
   const carregar = useCallback(async () => {
@@ -102,7 +103,7 @@ export default function DemandasPage() {
     setLoading(false);
   }, [filtroStatus]);
 
-  useEffect(() => { if (status === "authenticated") carregar(); }, [filtroStatus, status]);
+  useEffect(() => { if (status === "authenticated") carregar(); }, [filtroStatus, status, carregar]);
 
   async function carregarUsuarios() {
     const res = await fetch("/api/usuarios");
@@ -257,7 +258,7 @@ export default function DemandasPage() {
                   <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide mb-1.5">Status</p>
                   <select
                     value={detalhe.status}
-                    onChange={e => { setDetalhe(p => p ? { ...p, status: e.target.value } : null); salvarDetalhe({ status: e.target.value as any }); }}
+                    onChange={e => { setDetalhe(p => p ? { ...p, status: e.target.value } : null); salvarDetalhe({ status: e.target.value }); }}
                     className="w-full h-[32px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none"
                   >
                     {Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -267,7 +268,7 @@ export default function DemandasPage() {
                   <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide mb-1.5">Prioridade</p>
                   <select
                     value={detalhe.prioridade}
-                    onChange={e => { setDetalhe(p => p ? { ...p, prioridade: e.target.value } : null); salvarDetalhe({ prioridade: e.target.value as any }); }}
+                    onChange={e => { setDetalhe(p => p ? { ...p, prioridade: e.target.value } : null); salvarDetalhe({ prioridade: e.target.value }); }}
                     className="w-full h-[32px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none"
                   >
                     {Object.entries(PRIORIDADE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -279,7 +280,7 @@ export default function DemandasPage() {
                 <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide mb-1.5">Responsável</p>
                 <select
                   value={detalhe.responsavel?.id ?? ""}
-                  onChange={e => { salvarDetalhe({ responsavelId: e.target.value || null } as any); }}
+                  onChange={e => { salvarDetalhe({ responsavelId: e.target.value || null }); }}
                   className="w-full h-[32px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none"
                 >
                   <option value="">Sem responsável</option>
@@ -292,7 +293,7 @@ export default function DemandasPage() {
                 <input
                   type="date"
                   defaultValue={detalhe.prazo ? detalhe.prazo.slice(0, 10) : ""}
-                  onBlur={e => salvarDetalhe({ prazo: e.target.value || null } as any)}
+                  onBlur={e => salvarDetalhe({ prazo: e.target.value || null })}
                   className="w-full h-[32px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none"
                 />
               </div>

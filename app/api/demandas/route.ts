@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   const demandas = await prisma.demanda.findMany({
     where: {
-      ...(status ? { status: status as any } : {}),
+      ...(status ? { status: status as "PENDENTE" | "EM_ANDAMENTO" | "AGUARDANDO" | "CONCLUIDO" | "CANCELADO" } : {}),
       ...(responsavelId ? { responsavelId } : {}),
     },
     include: { responsavel: { select: { id: true, name: true } } },
