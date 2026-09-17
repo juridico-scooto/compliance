@@ -54,6 +54,9 @@ model Demanda {
   status       StatusDemanda @default(PENDENTE)
   solicitante  String        // nome livre (sem login)
   setor        String?
+  operacao     String?
+  cliente      String?
+  anexos       String[]      // URLs dos arquivos enviados
   responsavelId String?
   responsavel  User?         @relation(fields: [responsavelId], references: [id])
   prazo        DateTime?

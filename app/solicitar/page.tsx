@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 const TIPO_LABEL: Record<string, string> = {
   CONTRATO: "Contrato",
@@ -10,24 +10,80 @@ const TIPO_LABEL: Record<string, string> = {
   OUTRO: "Outro",
 };
 
+const SETORES = ["Comercial", "Marketing", "Operações", "Financeiro", "Jurídico", "People"];
+
+type Arquivo = { nome: string; tamanho: number; file: File };
+
 export default function SolicitarPage() {
   const [form, setForm] = useState({
-    solicitante: "", setor: "", tipo: "CONSULTA_JURIDICA", titulo: "", descricao: "",
+    solicitante: "",
+    setor: "",
+    operacao: "",
+    cliente: "",
+    tipo: "CONSULTA_JURIDICA",
+    titulo: "",
+    descricao: "",
   });
+  const [arquivos, setArquivos] = useState<Arquivo[]>([]);
   const [status, setStatus] = useState<"idle" | "loading" | "ok" | "erro">("idle");
+  const [erroMsg, setErroMsg] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  function adicionarArquivos(files: FileList | null) {
+    if (!files) return;
+    const novos: Arquivo[] = [];
+    for (const file of Array.from(files)) {
+      if (file.size > 10 * 1024 * 1024) { setErroMsg(`${file.name} excede 10MB`); continue; }
+      novos.push({ nome: file.name, tamanho: file.size, file });
+    }
+    setArquivos(prev => [...prev, ...novos]);
+    setErroMsg("");
+  }
+
+  function removerArquivo(i: number) {
+    setArquivos(prev => prev.filter((_, idx) => idx !== i));
+  }
+
+  function fmtSize(bytes: number) {
+    if (bytes < 1024) return `${bytes}B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+  }
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
     if (!form.solicitante || !form.titulo || !form.descricao) return;
     setStatus("loading");
+    setErroMsg("");
+
     try {
+      // Upload dos arquivos primeiro
+      const urlsAnexos: string[] = [];
+      for (const arq of arquivos) {
+        const fd = new FormData();
+        fd.append("file", arq.file);
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        if (res.ok) {
+          const d = await res.json();
+          urlsAnexos.push(d.url);
+        }
+      }
+
       const res = await fetch("/api/demandas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, prioridade: "NORMAL" }),
+        body: JSON.stringify({ ...form, prioridade: "NORMAL", anexos: urlsAnexos }),
       });
-      setStatus(res.ok ? "ok" : "erro");
+
+      if (res.ok) {
+        setStatus("ok");
+      } else {
+        const d = await res.json();
+        setErroMsg(d.error ?? "Erro ao enviar.");
+        setStatus("erro");
+      }
     } catch {
+      setErroMsg("Erro de conexão. Tente novamente.");
       setStatus("erro");
     }
   }
@@ -46,7 +102,11 @@ export default function SolicitarPage() {
             Sua demanda foi registrada e o time jurídico da Scooto irá analisar em breve.
           </p>
           <button
-            onClick={() => { setStatus("idle"); setForm({ solicitante: "", setor: "", tipo: "CONSULTA_JURIDICA", titulo: "", descricao: "" }); }}
+            onClick={() => {
+              setStatus("idle");
+              setForm({ solicitante: "", setor: "", operacao: "", cliente: "", tipo: "CONSULTA_JURIDICA", titulo: "", descricao: "" });
+              setArquivos([]);
+            }}
             className="mt-6 h-[36px] px-6 bg-[var(--violet)] text-white rounded-sm text-[12px] font-bold hover:bg-[var(--violet-dark)] transition-colors"
           >
             Nova solicitação
@@ -73,9 +133,13 @@ export default function SolicitarPage() {
         </div>
 
         <form onSubmit={enviar} className="px-8 py-6 space-y-4">
+
+          {/* Solicitante + Setor */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide block mb-1.5">Seu nome *</label>
+              <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide block mb-1.5">
+                Seu nome <span className="text-[#EF4444]">*</span>
+              </label>
               <input
                 value={form.solicitante}
                 onChange={e => setForm(p => ({ ...p, solicitante: e.target.value }))}
@@ -86,17 +150,44 @@ export default function SolicitarPage() {
             </div>
             <div>
               <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide block mb-1.5">Setor / Área</label>
-              <input
+              <select
                 value={form.setor}
                 onChange={e => setForm(p => ({ ...p, setor: e.target.value }))}
+                className="w-full h-[36px] px-3 text-[13px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)] text-[var(--text-primary)]"
+              >
+                <option value="">Selecione...</option>
+                {SETORES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Operação + Cliente */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide block mb-1.5">Qual operação?</label>
+              <input
+                value={form.operacao}
+                onChange={e => setForm(p => ({ ...p, operacao: e.target.value }))}
                 className="w-full h-[36px] px-3 text-[13px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]"
-                placeholder="Ex: Comercial"
+                placeholder="Ex: Franquia, Parceria..."
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide block mb-1.5">Qual cliente?</label>
+              <input
+                value={form.cliente}
+                onChange={e => setForm(p => ({ ...p, cliente: e.target.value }))}
+                className="w-full h-[36px] px-3 text-[13px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]"
+                placeholder="Nome do cliente"
               />
             </div>
           </div>
 
+          {/* Tipo */}
           <div>
-            <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide block mb-1.5">Tipo de demanda *</label>
+            <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide block mb-1.5">
+              Tipo de demanda <span className="text-[#EF4444]">*</span>
+            </label>
             <select
               value={form.tipo}
               onChange={e => setForm(p => ({ ...p, tipo: e.target.value }))}
@@ -106,8 +197,11 @@ export default function SolicitarPage() {
             </select>
           </div>
 
+          {/* Assunto */}
           <div>
-            <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide block mb-1.5">Assunto *</label>
+            <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide block mb-1.5">
+              Assunto <span className="text-[#EF4444]">*</span>
+            </label>
             <input
               value={form.titulo}
               onChange={e => setForm(p => ({ ...p, titulo: e.target.value }))}
@@ -117,21 +211,70 @@ export default function SolicitarPage() {
             />
           </div>
 
+          {/* Descrição */}
           <div>
-            <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide block mb-1.5">Descrição *</label>
+            <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide block mb-1.5">
+              Descrição <span className="text-[#EF4444]">*</span>
+            </label>
             <textarea
               value={form.descricao}
               onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))}
               required
               rows={4}
               className="w-full px-3 py-2.5 text-[13px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)] resize-none"
-              placeholder="Descreva com detalhes o que você precisa, contexto, documentos envolvidos, prazo que você tem etc."
+              placeholder="Descreva com detalhes o que você precisa, contexto, documentos envolvidos, prazo etc."
             />
           </div>
 
-          {status === "erro" && (
+          {/* Anexos */}
+          <div>
+            <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide block mb-1.5">Anexos</label>
+            <div
+              className="border border-dashed border-[var(--gray-border)] rounded-sm p-4 text-center cursor-pointer hover:border-[var(--violet)] hover:bg-[var(--violet-light)] transition-colors"
+              onClick={() => fileRef.current?.click()}
+              onDragOver={e => e.preventDefault()}
+              onDrop={e => { e.preventDefault(); adicionarArquivos(e.dataTransfer.files); }}
+            >
+              <input
+                ref={fileRef}
+                type="file"
+                multiple
+                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                className="hidden"
+                onChange={e => adicionarArquivos(e.target.files)}
+              />
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-[var(--gray-mid)] mx-auto mb-1.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <p className="text-[12px] text-[var(--text-secondary)]">Clique ou arraste arquivos aqui</p>
+              <p className="text-[10px] text-[var(--gray-mid)] mt-0.5">Imagens, PDF, Word, Excel — máx. 10MB por arquivo</p>
+            </div>
+
+            {arquivos.length > 0 && (
+              <div className="mt-2 space-y-1.5">
+                {arquivos.map((arq, i) => (
+                  <div key={i} className="flex items-center justify-between bg-[var(--gray-light)] rounded-sm px-3 py-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 text-[var(--gray-mid)] shrink-0">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                      </svg>
+                      <span className="text-[12px] text-[var(--text-primary)] truncate">{arq.nome}</span>
+                      <span className="text-[10px] text-[var(--gray-mid)] shrink-0">{fmtSize(arq.tamanho)}</span>
+                    </div>
+                    <button type="button" onClick={() => removerArquivo(i)} className="text-[var(--gray-mid)] hover:text-[#EF4444] ml-2 shrink-0">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {erroMsg && (
             <p className="text-[12px] text-[#8B0030] bg-[var(--red-bg)] border border-[#F5B8CC] rounded-sm px-3 py-2">
-              Erro ao enviar. Tente novamente.
+              {erroMsg}
             </p>
           )}
 

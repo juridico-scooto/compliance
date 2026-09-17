@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { titulo, descricao, tipo, prioridade, solicitante, setor, responsavelId, prazo } = body;
+  const { titulo, descricao, tipo, prioridade, solicitante, setor, operacao, cliente, anexos, responsavelId, prazo } = body;
 
   if (!titulo || !descricao || !tipo || !solicitante) {
     return NextResponse.json({ error: "Campos obrigatórios: titulo, descricao, tipo, solicitante" }, { status: 400 });
@@ -39,6 +39,9 @@ export async function POST(req: NextRequest) {
       prioridade: prioridade ?? "NORMAL",
       solicitante,
       setor: setor ?? null,
+      operacao: operacao ?? null,
+      cliente: cliente ?? null,
+      anexos: anexos ?? [],
       responsavelId: responsavelId ?? null,
       prazo: prazo ? new Date(prazo) : null,
     },
