@@ -16,6 +16,7 @@ type Arquivo = { nome: string; tamanho: number; file: File };
 export default function SolicitarPage() {
   const [form, setForm] = useState({
     solicitante: "",
+    email: "",
     setor: "",
     operacao: "",
     cliente: "",
@@ -72,7 +73,7 @@ export default function SolicitarPage() {
       const res = await fetch("/api/demandas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, prioridade: "NORMAL", anexos: urlsAnexos }),
+        body: JSON.stringify({ ...form, emailSolicitante: form.email, prioridade: "NORMAL", anexos: urlsAnexos }),
       });
 
       if (res.ok) {
@@ -104,7 +105,7 @@ export default function SolicitarPage() {
           <button
             onClick={() => {
               setStatus("idle");
-              setForm({ solicitante: "", setor: "", operacao: "", cliente: "", tipo: "CONSULTA_JURIDICA", titulo: "", descricao: "", prazo: "" });
+              setForm({ solicitante: "", email: "", setor: "", operacao: "", cliente: "", tipo: "CONSULTA_JURIDICA", titulo: "", descricao: "", prazo: "" });
               setArquivos([]);
             }}
             className="mt-6 h-[36px] px-6 bg-[var(--violet)] text-white rounded-sm text-[12px] font-bold hover:bg-[var(--violet-dark)] transition-colors"
@@ -134,7 +135,7 @@ export default function SolicitarPage() {
 
         <form onSubmit={enviar} className="px-8 py-6 space-y-4">
 
-          {/* Solicitante + Setor */}
+          {/* Solicitante + Email */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide block mb-1.5">
@@ -149,16 +150,31 @@ export default function SolicitarPage() {
               />
             </div>
             <div>
-              <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide block mb-1.5">Setor / Área</label>
-              <select
-                value={form.setor}
-                onChange={e => setForm(p => ({ ...p, setor: e.target.value }))}
-                className="w-full h-[36px] px-3 text-[13px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)] text-[var(--text-primary)]"
-              >
-                <option value="">Selecione...</option>
-                {SETORES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+              <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide block mb-1.5">
+                E-mail <span className="text-[#EF4444]">*</span>
+              </label>
+              <input
+                type="email"
+                value={form.email}
+                onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+                required
+                className="w-full h-[36px] px-3 text-[13px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]"
+                placeholder="seu@email.com"
+              />
             </div>
+          </div>
+
+          {/* Setor */}
+          <div>
+            <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide block mb-1.5">Setor / Área</label>
+            <select
+              value={form.setor}
+              onChange={e => setForm(p => ({ ...p, setor: e.target.value }))}
+              className="w-full h-[36px] px-3 text-[13px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)] text-[var(--text-primary)]"
+            >
+              <option value="">Selecione...</option>
+              {SETORES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
           </div>
 
           {/* Operação + Cliente */}

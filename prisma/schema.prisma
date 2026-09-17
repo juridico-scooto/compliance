@@ -53,6 +53,7 @@ model Demanda {
   prioridade   Prioridade    @default(NORMAL)
   status       StatusDemanda @default(PENDENTE)
   solicitante  String        // nome livre (sem login)
+  emailSolicitante String?
   setor        String?
   operacao     String?
   cliente      String?
