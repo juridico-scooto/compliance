@@ -22,6 +22,7 @@ export default function SolicitarPage() {
     tipo: "CONSULTA_JURIDICA",
     titulo: "",
     descricao: "",
+    prazo: "",
   });
   const [arquivos, setArquivos] = useState<Arquivo[]>([]);
   const [status, setStatus] = useState<"idle" | "loading" | "ok" | "erro">("idle");
@@ -103,7 +104,7 @@ export default function SolicitarPage() {
           <button
             onClick={() => {
               setStatus("idle");
-              setForm({ solicitante: "", setor: "", operacao: "", cliente: "", tipo: "CONSULTA_JURIDICA", titulo: "", descricao: "" });
+              setForm({ solicitante: "", setor: "", operacao: "", cliente: "", tipo: "CONSULTA_JURIDICA", titulo: "", descricao: "", prazo: "" });
               setArquivos([]);
             }}
             className="mt-6 h-[36px] px-6 bg-[var(--violet)] text-white rounded-sm text-[12px] font-bold hover:bg-[var(--violet-dark)] transition-colors"
@@ -207,6 +208,28 @@ export default function SolicitarPage() {
               required
               className="w-full h-[36px] px-3 text-[13px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]"
               placeholder="Resumo em uma linha"
+            />
+          </div>
+
+          {/* Prazo ideal */}
+          <div>
+            <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide flex items-center gap-1.5 mb-1.5">
+              Prazo ideal
+              <span className="relative group">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 text-[var(--gray-mid)] cursor-default">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 bg-[var(--text-primary)] text-white text-[10px] leading-relaxed rounded px-2.5 py-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 font-normal normal-case tracking-normal">
+                  Esta data é apenas para nos ajudar a entender a urgência da sua demanda. Não é uma garantia de cumprimento, pois outras demandas internas também são consideradas no planejamento do time jurídico.
+                  <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[var(--text-primary)]" />
+                </span>
+              </span>
+            </label>
+            <input
+              type="date"
+              value={form.prazo ?? ""}
+              onChange={e => setForm(p => ({ ...p, prazo: e.target.value }))}
+              className="w-full h-[36px] px-3 text-[13px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]"
             />
           </div>
 
