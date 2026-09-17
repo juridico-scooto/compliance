@@ -73,7 +73,7 @@ export default function SolicitarPage() {
       const res = await fetch("/api/demandas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, emailSolicitante: form.email, prioridade: "NORMAL", anexos: urlsAnexos }),
+        body: JSON.stringify({ ...form, emailSolicitante: form.email, prazoSolicitado: form.prazo || null, prazo: null, prioridade: "NORMAL", anexos: urlsAnexos }),
       });
 
       if (res.ok) {

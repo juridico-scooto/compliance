@@ -46,28 +46,38 @@ enum Resultado {
 }
 
 model Demanda {
-  id           String        @id @default(cuid())
-  titulo       String
-  descricao    String
-  tipo         TipoDemanda
-  prioridade   Prioridade    @default(NORMAL)
-  status       StatusDemanda @default(PENDENTE)
-  solicitante  String        // nome livre (sem login)
+  id               String     @id @default(cuid())
+  titulo           String
+  descricao        String
+  tipo             TipoDemanda
+  prioridade       Prioridade @default(NORMAL)
+  status           String     @default("PENDENTE")
+  solicitante      String
   emailSolicitante String?
-  setor        String?
-  operacao     String?
-  cliente      String?
-  anexos       String[]      // URLs dos arquivos enviados
-  responsavelId String?
-  responsavel  User?         @relation(fields: [responsavelId], references: [id])
-  prazo        DateTime?
-  notas        String?
-  criadoEm     DateTime      @default(now())
-  atualizadoEm DateTime      @updatedAt
+  setor            String?
+  operacao         String?
+  cliente          String?
+  anexos           String[]
+  responsavelId    String?
+  responsavel      User?      @relation(fields: [responsavelId], references: [id])
+  prazoSolicitado  DateTime?  // prazo pedido pelo solicitante (referência)
+  prazo            DateTime?  // prazo interno definido pela equipe
+  notas            String?
+  criadoEm         DateTime   @default(now())
+  atualizadoEm     DateTime   @updatedAt
 
   @@index([status])
   @@index([responsavelId])
   @@index([criadoEm])
+}
+
+model StatusConfig {
+  id       String  @id
+  nome     String
+  cor      String  @default("#E2E8F0")
+  corTexto String  @default("#475569")
+  ordem    Int     @default(0)
+  ativo    Boolean @default(true)
 }
 
 enum TipoDemanda {
@@ -83,14 +93,6 @@ enum Prioridade {
   NORMAL
   ALTA
   URGENTE
-}
-
-enum StatusDemanda {
-  PENDENTE
-  EM_ANDAMENTO
-  AGUARDANDO
-  CONCLUIDO
-  CANCELADO
 }
 
 model PgfnDevedor {
