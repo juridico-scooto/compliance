@@ -110,7 +110,7 @@ export default function DemandasPage() {
     if (res.ok) setUsuarios(await res.json());
   }
 
-  async function salvarDetalhe(campo: Partial<Demanda>) {
+  async function salvarDetalhe(campo: Partial<Demanda> & { responsavelId?: string | null; status?: string; prioridade?: string; prazo?: string | null }) {
     if (!detalhe) return;
     setSaving(true);
     await fetch(`/api/demandas/${detalhe.id}`, {
