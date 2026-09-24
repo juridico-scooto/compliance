@@ -35,13 +35,27 @@ function catInfo(id: string) {
   return CATEGORIAS.find(c => c.id === id) ?? CATEGORIAS[0];
 }
 
+// Normaliza nome de variável: trim + colapsa espaços ao redor da "/"
+function normVar(s: string): string {
+  return s.trim().replace(/\s*\/\s*/g, "/");
+}
+
 function extrairVariaveis(texto: string): string[] {
   const matches = texto.match(/\{\{([^}]+)\}\}/g) ?? [];
-  return Array.from(new Set(matches.map(m => m.replace(/^\{\{|\}\}$/g, "").trim())));
+  return Array.from(new Set(matches.map(m => normVar(m.replace(/^\{\{|\}\}$/g, "")))));
 }
 
 function aplicarVariaveis(texto: string, vars: Record<string, string>): string {
-  return texto.replace(/\{\{([^}]+)\}\}/g, (_, nome) => vars[nome.trim()] ?? `{{${nome.trim()}}}`);
+  return texto.replace(/\{\{([^}]+)\}\}/g, (_, nome) => {
+    const key = normVar(nome);
+    return vars[key] ?? `{{${key}}}`;
+  });
+}
+
+// Se a variável tem "/" → são opções para escolher (ex: "bom dia/boa tarde")
+function opcoesVar(nome: string): string[] | null {
+  if (!nome.includes("/")) return null;
+  return nome.split("/").map(o => o.trim()).filter(Boolean);
 }
 
 const TEMPLATE_VAZIO = {
@@ -320,17 +334,34 @@ export default function ModelosPage() {
                 <div className="mb-5 bg-[var(--gray-light)] rounded-card p-4">
                   <p className="label-xs mb-3">Preencher variáveis antes de copiar</p>
                   <div className="grid grid-cols-2 gap-3">
-                    {detalhe.variaveis.map(v => (
-                      <div key={v}>
-                        <label className="text-[11px] text-[var(--text-secondary)] font-semibold mb-1 block">{`{{${v}}}`}</label>
-                        <input
-                          value={varsPreenchidas[v] ?? ""}
-                          onChange={e => setVarsPreenchidas(prev => ({ ...prev, [v]: e.target.value }))}
-                          placeholder={v}
-                          className="w-full h-[30px] px-2.5 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)] bg-white"
-                        />
-                      </div>
-                    ))}
+                    {detalhe.variaveis.map(v => {
+                      const opcoes = opcoesVar(v);
+                      return (
+                        <div key={v}>
+                          <label className="text-[11px] text-[var(--text-secondary)] font-semibold mb-1 block">
+                            {`{{${v}}}`}
+                            {opcoes && <span className="ml-1 text-[9px] font-bold bg-[var(--violet-light)] text-[var(--violet)] px-1.5 py-0.5 rounded-full">escolha</span>}
+                          </label>
+                          {opcoes ? (
+                            <select
+                              value={varsPreenchidas[v] ?? ""}
+                              onChange={e => setVarsPreenchidas(prev => ({ ...prev, [v]: e.target.value }))}
+                              className="w-full h-[30px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)] bg-white"
+                            >
+                              <option value="">Escolha...</option>
+                              {opcoes.map(o => <option key={o} value={o}>{o}</option>)}
+                            </select>
+                          ) : (
+                            <input
+                              value={varsPreenchidas[v] ?? ""}
+                              onChange={e => setVarsPreenchidas(prev => ({ ...prev, [v]: e.target.value }))}
+                              placeholder={v}
+                              className="w-full h-[30px] px-2.5 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)] bg-white"
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
