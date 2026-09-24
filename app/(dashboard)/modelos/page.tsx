@@ -15,9 +15,14 @@ type Template = {
   conteudo: string;
   tags: string[];
   variaveis: string[];
+  cc: string[];
   autor: Autor | null;
   criadoEm: string;
 };
+
+function isEmail(v: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+}
 
 const CATEGORIAS = [
   { id: "EMAIL",    label: "E-mail",            icon: "✉️",  cor: "#EDE9FE", corTexto: "#6D28D9" },
@@ -40,7 +45,7 @@ function aplicarVariaveis(texto: string, vars: Record<string, string>): string {
 }
 
 const TEMPLATE_VAZIO = {
-  titulo: "", categoria: "EMAIL", situacao: "", assunto: "", conteudo: "", tags: "", variaveis: "",
+  titulo: "", categoria: "EMAIL", situacao: "", assunto: "", conteudo: "", tags: "", variaveis: "", cc: "",
 };
 
 export default function ModelosPage() {
@@ -91,6 +96,7 @@ export default function ModelosPage() {
       conteudo: t.conteudo,
       tags: t.tags.join(", "),
       variaveis: t.variaveis.join(", "),
+      cc: t.cc.join(", "),
     });
     setEditOpen(true);
   }
@@ -112,6 +118,7 @@ export default function ModelosPage() {
       conteudo: form.conteudo,
       tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
       variaveis: todasVars,
+      cc: form.cc.split(",").map(v => v.trim()).filter(Boolean),
     };
 
     const url = editando ? `/api/templates/${editando.id}` : "/api/templates";
@@ -141,13 +148,14 @@ export default function ModelosPage() {
   }
 
   async function copiar(t: Template) {
-    const texto = aplicarVariaveis(
-      t.categoria === "EMAIL" && t.assunto
-        ? `Assunto: ${t.assunto}\n\n${t.conteudo}`
-        : t.conteudo,
-      varsPreenchidas,
-    );
-    await navigator.clipboard.writeText(texto);
+    const partes: string[] = [];
+    if (t.categoria === "EMAIL") {
+      if (t.assunto) partes.push(`Assunto: ${aplicarVariaveis(t.assunto, varsPreenchidas)}`);
+      if (t.cc.length > 0) partes.push(`CC: ${t.cc.join(", ")}`);
+      if (partes.length > 0) partes.push("");
+    }
+    partes.push(aplicarVariaveis(t.conteudo, varsPreenchidas));
+    await navigator.clipboard.writeText(partes.join("\n"));
     setCopiado(true);
     setTimeout(() => setCopiado(false), 2000);
   }
@@ -284,6 +292,29 @@ export default function ModelosPage() {
                 </div>
               )}
 
+              {/* CC — só para EMAIL */}
+              {detalhe.categoria === "EMAIL" && detalhe.cc.length > 0 && (
+                <div className="mb-5">
+                  <p className="label-xs mb-2">Cópia (CC)</p>
+                  <div className="flex flex-wrap gap-2">
+                    {detalhe.cc.map(v => (
+                      isEmail(v) ? (
+                        <span key={v} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#EFF6FF] border border-[#BFDBFE] rounded-full text-[12px] font-semibold text-[#1D4ED8]">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                          {v}
+                        </span>
+                      ) : (
+                        <span key={v} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFBEB] border border-[#FDE68A] rounded-full text-[12px] font-semibold text-[#92400E]">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                          {v}
+                          <span className="text-[9px] font-bold bg-[#FDE68A] text-[#92400E] px-1.5 py-0.5 rounded-full ml-0.5">buscar e-mail</span>
+                        </span>
+                      )
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Preenchimento de variáveis */}
               {detalhe.variaveis.length > 0 && (
                 <div className="mb-5 bg-[var(--gray-light)] rounded-card p-4">
@@ -375,6 +406,18 @@ export default function ModelosPage() {
                   </div>
                 )}
               </div>
+
+              {form.categoria === "EMAIL" && (
+                <div>
+                  <label className="label-xs block mb-1">
+                    CC — Cópia <span className="font-normal normal-case text-[var(--gray-mid)]">(separados por vírgula — e-mail direto ou cargo, ex: "GM da operação")</span>
+                  </label>
+                  <input value={form.cc} onChange={e => setForm(p => ({ ...p, cc: e.target.value }))}
+                    className="w-full h-[34px] px-3 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]"
+                    placeholder="Ex: juridico@scooto.com.br, GM da operação, CEO" />
+                  <p className="text-[10px] text-[var(--gray-mid)] mt-1">E-mails ficam em azul · Cargos ficam em amarelo (precisa buscar o e-mail na hora do envio)</p>
+                </div>
+              )}
 
               <div>
                 <label className="label-xs block mb-1">Quando usar <span className="font-normal normal-case text-[var(--gray-mid)]">(situação que dispara esse template)</span></label>

@@ -8,7 +8,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { titulo, categoria, situacao, assunto, conteudo, tags, variaveis } = body;
+  const { titulo, categoria, situacao, assunto, conteudo, tags, variaveis, cc } = body;
 
   const template = await prisma.template.update({
     where: { id: params.id },
@@ -20,6 +20,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       ...(conteudo !== undefined ? { conteudo } : {}),
       ...(tags !== undefined ? { tags } : {}),
       ...(variaveis !== undefined ? { variaveis } : {}),
+      ...(cc !== undefined ? { cc } : {}),
     },
     include: { autor: { select: { id: true, name: true } } },
   });

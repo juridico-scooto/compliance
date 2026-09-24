@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { titulo, categoria, situacao, assunto, conteudo, tags, variaveis } = body;
+  const { titulo, categoria, situacao, assunto, conteudo, tags, variaveis, cc } = body;
 
   if (!titulo || !categoria || !conteudo) {
     return NextResponse.json({ error: "título, categoria e conteúdo são obrigatórios" }, { status: 400 });
@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
       conteudo,
       tags: tags ?? [],
       variaveis: variaveis ?? [],
+      cc: cc ?? [],
       autorId: session.user.id,
     },
     include: { autor: { select: { id: true, name: true } } },

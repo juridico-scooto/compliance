@@ -120,6 +120,7 @@ model Template {
   conteudo     String
   tags         String[]
   variaveis    String[]
+  cc           String[]
   autorId      String?
   autor        User?    @relation(fields: [autorId], references: [id])
   criadoEm    DateTime @default(now())
