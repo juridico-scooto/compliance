@@ -410,7 +410,7 @@ export default function ModelosPage() {
               {form.categoria === "EMAIL" && (
                 <div>
                   <label className="label-xs block mb-1">
-                    CC — Cópia <span className="font-normal normal-case text-[var(--gray-mid)]">(separados por vírgula — e-mail direto ou cargo, ex: "GM da operação")</span>
+                    CC — Cópia <span className="font-normal normal-case text-[var(--gray-mid)]">(separados por vírgula — e-mail direto ou cargo, ex: &quot;GM da operação&quot;)</span>
                   </label>
                   <input value={form.cc} onChange={e => setForm(p => ({ ...p, cc: e.target.value }))}
                     className="w-full h-[34px] px-3 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]"
