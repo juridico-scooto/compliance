@@ -1,10 +1,142 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useEffect, useRef, useState, useCallback } from "react";
+
+type Notificacao = {
+  id: string;
+  tipo: string;
+  titulo: string;
+  texto: string | null;
+  demandaId: string | null;
+  lida: boolean;
+  criadoEm: string;
+};
+
+function fmtTempo(s: string) {
+  const diff = Date.now() - new Date(s).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "agora";
+  if (min < 60) return `${min}min atrás`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h}h atrás`;
+  return `${Math.floor(h / 24)}d atrás`;
+}
+
+function tipoIcon(tipo: string) {
+  if (tipo === "NOVA_DEMANDA") return "📋";
+  if (tipo === "MENCAO") return "💬";
+  return "👤";
+}
+
+function NotificationBell({ onNavDemanda }: { onNavDemanda: (id: string) => void }) {
+  const [notifs, setNotifs] = useState<Notificacao[]>([]);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const buscar = useCallback(async () => {
+    try {
+      const res = await fetch("/api/notificacoes");
+      if (res.ok) setNotifs(await res.json());
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    buscar();
+    const timer = setInterval(buscar, 30000);
+    return () => clearInterval(timer);
+  }, [buscar]);
+
+  useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, []);
+
+  const naoLidas = notifs.filter(n => !n.lida).length;
+
+  async function marcarLida(id: string) {
+    await fetch("/api/notificacoes", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    setNotifs(prev => prev.map(n => n.id === id ? { ...n, lida: true } : n));
+  }
+
+  async function lerTodas() {
+    await fetch("/api/notificacoes", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lerTodas: true }) });
+    setNotifs(prev => prev.map(n => ({ ...n, lida: true })));
+  }
+
+  function clicarNotif(n: Notificacao) {
+    marcarLida(n.id);
+    if (n.demandaId) onNavDemanda(n.demandaId);
+    setOpen(false);
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="relative w-8 h-8 flex items-center justify-center rounded-full hover:bg-[var(--gray-light)] transition-colors"
+        title="Notificações"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-[var(--text-secondary)]">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        {naoLidas > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#EF4444] text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+            {naoLidas > 9 ? "9+" : naoLidas}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute bottom-10 left-0 w-[320px] bg-white border border-[var(--gray-border)] rounded-card shadow-2xl z-50 overflow-hidden">
+          <div className="px-4 py-3 border-b border-[var(--gray-border)] flex items-center justify-between">
+            <p className="text-[12px] font-bold text-[var(--text-primary)]">Notificações {naoLidas > 0 && <span className="text-[var(--violet)]">({naoLidas} nova{naoLidas > 1 ? "s" : ""})</span>}</p>
+            {naoLidas > 0 && (
+              <button onClick={lerTodas} className="text-[11px] text-[var(--violet)] hover:underline font-semibold">Ler todas</button>
+            )}
+          </div>
+          <div className="overflow-y-auto max-h-[340px]">
+            {notifs.length === 0 ? (
+              <p className="text-[12px] text-[var(--text-secondary)] text-center py-8">Nenhuma notificação</p>
+            ) : notifs.map(n => (
+              <button key={n.id} onClick={() => clicarNotif(n)}
+                className={`w-full text-left px-4 py-3 border-b border-[var(--gray-border)] hover:bg-[var(--gray-light)] transition-colors flex gap-3 items-start ${!n.lida ? "bg-[#F5F3FF]" : ""}`}>
+                <span className="text-base mt-0.5 shrink-0">{tipoIcon(n.tipo)}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-semibold text-[var(--text-primary)] leading-snug">{n.titulo}</p>
+                  {n.texto && <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 line-clamp-2">{n.texto}</p>}
+                  <p className="text-[10px] text-[var(--gray-mid)] mt-1">{fmtTempo(n.criadoEm)}</p>
+                </div>
+                {!n.lida && <span className="w-2 h-2 rounded-full bg-[var(--violet)] shrink-0 mt-1.5" />}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const navItems = [
+  {
+    section: "Início",
+    items: [
+      {
+        href: "/home",
+        label: "Meu Painel",
+        icon: (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 shrink-0">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+          </svg>
+        ),
+      },
+    ],
+  },
   {
     section: "Jurídico",
     items: [
@@ -39,8 +171,7 @@ const navItems = [
       },
       {
         href: "/modelos",
-        label: "Modelos de Documentos",
-        badge: "Em breve",
+        label: "Modelos e Templates",
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 shrink-0">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
@@ -107,12 +238,17 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
 
   const initials = session?.user?.name
     ? session.user.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
     : "??";
+
+  function navParaDemanda(demandaId: string) {
+    router.push(`/demandas?demanda=${demandaId}`);
+  }
 
   return (
     <aside
@@ -172,13 +308,14 @@ export default function Sidebar() {
           >
             {initials}
           </div>
-          <div className="overflow-hidden">
+          <div className="overflow-hidden flex-1">
             <p className="text-[12px] font-bold text-[var(--text-primary)] truncate">{session?.user?.name ?? "—"}</p>
             <p className="text-[10px] text-[var(--text-secondary)] flex items-center gap-1 mt-px">
               <span className="w-1.5 h-1.5 rounded-full bg-[var(--violet)] inline-block" />
               {isAdmin ? "Admin · Jurídico" : "Scooteira"}
             </p>
           </div>
+          {session && <NotificationBell onNavDemanda={navParaDemanda} />}
         </div>
       </div>
     </aside>

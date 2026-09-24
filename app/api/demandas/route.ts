@@ -49,5 +49,21 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Notificar todos os admins sobre nova demanda
+  try {
+    const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } });
+    if (admins.length > 0) {
+      await prisma.notificacao.createMany({
+        data: admins.map(a => ({
+          usuarioId: a.id,
+          tipo: "NOVA_DEMANDA",
+          titulo: `Nova demanda: ${titulo}`,
+          texto: `Solicitante: ${solicitante}`,
+          demandaId: demanda.id,
+        })),
+      });
+    }
+  } catch {}
+
   return NextResponse.json(demanda, { status: 201 });
 }

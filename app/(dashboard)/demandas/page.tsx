@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type Responsavel = { id: string; name: string };
 type StatusConfig = { id: string; nome: string; cor: string; corTexto: string; ordem: number };
@@ -25,6 +25,13 @@ type Demanda = {
   prazoSolicitado: string | null;
   notas: string | null;
   criadoEm: string;
+};
+
+type Comentario = {
+  id: string;
+  texto: string;
+  criadoEm: string;
+  autor: { id: string; name: string };
 };
 
 const PRIORIDADE_LABEL: Record<string, string> = { BAIXA: "Baixa", NORMAL: "Normal", ALTA: "Alta", URGENTE: "Urgente" };
@@ -53,8 +60,13 @@ function nomeArquivo(url: string) {
 }
 
 export default function DemandasPage() {
-  const { status } = useSession();
+  return <Suspense><DemandasInner /></Suspense>;
+}
+
+function DemandasInner() {
+  const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [demandas, setDemandas] = useState<Demanda[]>([]);
   const [statuses, setStatuses] = useState<StatusConfig[]>([]);
@@ -70,6 +82,12 @@ export default function DemandasPage() {
 
   const [detalhe, setDetalhe] = useState<Demanda | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Comentários
+  const [comentarios, setComentarios] = useState<Comentario[]>([]);
+  const [novoComentario, setNovoComentario] = useState("");
+  const [enviandoComentario, setEnviandoComentario] = useState(false);
+  const comentariosEndRef = useRef<HTMLDivElement>(null);
   const [novaOpen, setNovaOpen] = useState(false);
   const [novaDemanda, setNovaDemanda] = useState({ titulo: "", descricao: "", tipo: "CONSULTA_JURIDICA", prioridade: "NORMAL", solicitante: "", setor: "", responsavelId: "", prazo: "" });
 
@@ -78,6 +96,16 @@ export default function DemandasPage() {
     if (status === "authenticated") { carregar(); carregarStatuses(); carregarUsuarios(); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
+
+  // Abrir demanda via query string (ex: de notificação)
+  useEffect(() => {
+    const demandaId = searchParams.get("demanda");
+    if (demandaId && demandas.length > 0) {
+      const d = demandas.find(x => x.id === demandaId);
+      if (d) abrirDetalhe(d);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, demandas]);
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -94,6 +122,31 @@ export default function DemandasPage() {
   async function carregarUsuarios() {
     const res = await fetch("/api/usuarios");
     if (res.ok) setUsuarios(await res.json());
+  }
+
+  async function abrirDetalhe(d: Demanda) {
+    setDetalhe(d);
+    setComentarios([]);
+    setNovoComentario("");
+    const res = await fetch(`/api/demandas/${d.id}/comentarios`);
+    if (res.ok) setComentarios(await res.json());
+  }
+
+  async function enviarComentario() {
+    if (!detalhe || !novoComentario.trim()) return;
+    setEnviandoComentario(true);
+    const res = await fetch(`/api/demandas/${detalhe.id}/comentarios`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ texto: novoComentario }),
+    });
+    if (res.ok) {
+      const novo = await res.json();
+      setComentarios(prev => [...prev, novo]);
+      setNovoComentario("");
+      setTimeout(() => comentariosEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    }
+    setEnviandoComentario(false);
   }
 
   async function salvar(campo: Record<string, unknown>) {
@@ -220,7 +273,7 @@ export default function DemandasPage() {
                         <p className="text-[11px] text-[var(--gray-mid)]">Nenhuma demanda</p>
                       </div>
                     ) : cards.map(d => (
-                      <button key={d.id} onClick={() => setDetalhe(d)}
+                      <button key={d.id} onClick={() => abrirDetalhe(d)}
                         className="w-full text-left bg-white border border-[var(--gray-border)] rounded-card p-3.5 hover:border-[var(--violet)] hover:shadow-sm transition-all">
                         <div className="flex items-start gap-2 mb-2">
                           <span className={`w-2 h-2 rounded-full shrink-0 mt-0.5 ${PRIORIDADE_DOT[d.prioridade]}`} />
@@ -365,6 +418,59 @@ export default function DemandasPage() {
               </div>
 
               {saving && <p className="text-[11px] text-[var(--text-secondary)]">Salvando...</p>}
+
+              {/* Comentários */}
+              <div className="pt-3 border-t border-[var(--gray-border)]">
+                <p className="label-xs mb-3">Comentários {comentarios.length > 0 && <span className="text-[var(--gray-mid)] font-normal normal-case">({comentarios.length})</span>}</p>
+
+                {/* Thread */}
+                {comentarios.length > 0 && (
+                  <div className="space-y-3 mb-4 max-h-[240px] overflow-y-auto pr-1">
+                    {comentarios.map(c => (
+                      <div key={c.id} className={`flex gap-2.5 ${c.autor.id === session?.user?.id ? "flex-row-reverse" : ""}`}>
+                        <div
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white shrink-0 mt-0.5"
+                          style={{ background: c.autor.id === session?.user?.id ? "linear-gradient(135deg, var(--violet), var(--magenta))" : "linear-gradient(135deg, #64748B, #94A3B8)" }}
+                        >
+                          {c.autor.name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase()}
+                        </div>
+                        <div className={`flex-1 ${c.autor.id === session?.user?.id ? "items-end" : "items-start"} flex flex-col`}>
+                          <div className={`px-3 py-2 rounded-lg text-[12px] leading-relaxed max-w-[85%] ${c.autor.id === session?.user?.id ? "bg-[var(--violet)] text-white" : "bg-[var(--gray-light)] text-[var(--text-primary)]"}`}>
+                            {c.texto.split(/(@[\wÀ-ÿ]+(?:\s+[\wÀ-ÿ]+)?)/g).map((part, i) =>
+                              part.startsWith("@")
+                                ? <span key={i} className={`font-bold ${c.autor.id === session?.user?.id ? "text-[#DDD6FE]" : "text-[var(--violet)]"}`}>{part}</span>
+                                : part
+                            )}
+                          </div>
+                          <p className="text-[10px] text-[var(--gray-mid)] mt-1 px-1">
+                            {c.autor.id === session?.user?.id ? "Você" : c.autor.name.split(" ")[0]} · {new Date(c.criadoEm).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={comentariosEndRef} />
+                  </div>
+                )}
+
+                {/* Input */}
+                <div className="flex gap-2">
+                  <input
+                    value={novoComentario}
+                    onChange={e => setNovoComentario(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviarComentario(); } }}
+                    placeholder="Escreva um comentário... (@nome para mencionar)"
+                    className="flex-1 h-[34px] px-3 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]"
+                  />
+                  <button
+                    onClick={enviarComentario}
+                    disabled={enviandoComentario || !novoComentario.trim()}
+                    className="h-[34px] px-4 bg-[var(--violet)] text-white rounded-sm text-[12px] font-bold hover:bg-[var(--violet-dark)] disabled:opacity-40 transition-colors shrink-0"
+                  >
+                    {enviandoComentario ? "..." : "Enviar"}
+                  </button>
+                </div>
+                <p className="text-[10px] text-[var(--gray-mid)] mt-1.5">Use @nome para notificar alguém · Enter para enviar</p>
+              </div>
             </div>
           </div>
         </div>

@@ -9,14 +9,17 @@ datasource db {
 }
 
 model User {
-  id        String     @id @default(cuid())
-  name      String
-  email     String     @unique
-  password  String
-  role      Role       @default(SCOOTEIRA)
-  createdAt DateTime   @default(now())
-  consultas Consulta[]
-  demandas  Demanda[]
+  id           String        @id @default(cuid())
+  name         String
+  email        String        @unique
+  password     String
+  role         Role          @default(SCOOTEIRA)
+  createdAt    DateTime      @default(now())
+  consultas    Consulta[]
+  demandas     Demanda[]
+  comentarios  Comentario[]  @relation("AutorComentarios")
+  notificacoes Notificacao[] @relation("NotificacoesRecebidas")
+  templates    Template[]
 }
 
 enum Role {
@@ -63,11 +66,39 @@ model Demanda {
   prazoSolicitado  DateTime?  // prazo pedido pelo solicitante (referência)
   prazo            DateTime?  // prazo interno definido pela equipe
   notas            String?
+  comentarios      Comentario[]
   criadoEm         DateTime   @default(now())
   atualizadoEm     DateTime   @updatedAt
 
   @@index([status])
   @@index([responsavelId])
+  @@index([criadoEm])
+}
+
+model Comentario {
+  id        String   @id @default(cuid())
+  demandaId String
+  demanda   Demanda  @relation(fields: [demandaId], references: [id], onDelete: Cascade)
+  autorId   String
+  autor     User     @relation("AutorComentarios", fields: [autorId], references: [id])
+  texto     String
+  criadoEm DateTime @default(now())
+
+  @@index([demandaId])
+}
+
+model Notificacao {
+  id        String   @id @default(cuid())
+  usuarioId String
+  usuario   User     @relation("NotificacoesRecebidas", fields: [usuarioId], references: [id])
+  tipo      String
+  titulo    String
+  texto     String?
+  demandaId String?
+  lida      Boolean  @default(false)
+  criadoEm DateTime @default(now())
+
+  @@index([usuarioId, lida])
   @@index([criadoEm])
 }
 
@@ -78,6 +109,23 @@ model StatusConfig {
   corTexto String  @default("#475569")
   ordem    Int     @default(0)
   ativo    Boolean @default(true)
+}
+
+model Template {
+  id           String   @id @default(cuid())
+  titulo       String
+  categoria    String   // EMAIL | MENSAGEM | DOCUMENTO | SITUACAO
+  situacao     String?
+  assunto      String?
+  conteudo     String
+  tags         String[]
+  variaveis    String[]
+  autorId      String?
+  autor        User?    @relation(fields: [autorId], references: [id])
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([categoria])
 }
 
 enum TipoDemanda {
