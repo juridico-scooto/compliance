@@ -36,12 +36,12 @@ function catInfo(id: string) {
 }
 
 function extrairVariaveis(texto: string): string[] {
-  const matches = texto.match(/\{\{([\w\s]+)\}\}/g) ?? [];
-  return Array.from(new Set(matches.map(m => m.replace(/\{\{|\}\}/g, "").trim())));
+  const matches = texto.match(/\{\{([^}]+)\}\}/g) ?? [];
+  return Array.from(new Set(matches.map(m => m.replace(/^\{\{|\}\}$/g, "").trim())));
 }
 
 function aplicarVariaveis(texto: string, vars: Record<string, string>): string {
-  return texto.replace(/\{\{([\w\s]+)\}\}/g, (_, nome) => vars[nome.trim()] ?? `{{${nome.trim()}}}`);
+  return texto.replace(/\{\{([^}]+)\}\}/g, (_, nome) => vars[nome.trim()] ?? `{{${nome.trim()}}}`);
 }
 
 const TEMPLATE_VAZIO = {
@@ -347,7 +347,7 @@ export default function ModelosPage() {
                 )}
                 <div className="bg-white border border-[var(--gray-border)] rounded-card p-5">
                   <p className="text-[13px] text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap">
-                    {aplicarVariaveis(detalhe.conteudo, varsPreenchidas).split(/(\{\{[\w\s]+\}\})/g).map((part, i) =>
+                    {aplicarVariaveis(detalhe.conteudo, varsPreenchidas).split(/(\{\{[^}]+\}\})/g).map((part, i) =>
                       part.startsWith("{{")
                         ? <span key={i} className="bg-[#FDE68A] text-[#92400E] px-1 rounded font-semibold">{part}</span>
                         : part
