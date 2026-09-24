@@ -48,7 +48,9 @@ function extrairVariaveis(texto: string): string[] {
 function aplicarVariaveis(texto: string, vars: Record<string, string>): string {
   return texto.replace(/\{\{([^}]+)\}\}/g, (_, nome) => {
     const key = normVar(nome);
-    return vars[key] ?? `{{${key}}}`;
+    const val = vars[key];
+    // Se vazio ou não preenchido, mantém o placeholder visível
+    return (val !== undefined && val !== "") ? val : `{{${key}}}`;
   });
 }
 
@@ -58,8 +60,38 @@ function opcoesVar(nome: string): string[] | null {
   return nome.split("/").map(o => o.trim()).filter(Boolean);
 }
 
-const TEMPLATE_VAZIO = {
-  titulo: "", categoria: "EMAIL", situacao: "", assunto: "", conteudo: "", tags: "", variaveis: "", cc: "",
+function ChipInput({ valores, onChange, placeholder }: { valores: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
+  const [input, setInput] = useState("");
+  function adicionar() {
+    const val = input.trim();
+    if (val && !valores.includes(val)) onChange([...valores, val]);
+    setInput("");
+  }
+  function remover(v: string) { onChange(valores.filter(x => x !== v)); }
+  return (
+    <div className="border border-[var(--gray-border)] rounded-sm focus-within:border-[var(--violet)] bg-white px-2 py-1.5 min-h-[36px] flex flex-wrap gap-1.5 items-center">
+      {valores.map(v => (
+        <span key={v} className="flex items-center gap-1 bg-[var(--violet-light)] text-[var(--violet)] text-[11px] font-semibold px-2 py-0.5 rounded-full">
+          {v}
+          <button type="button" onClick={() => remover(v)} className="text-[var(--violet)] hover:text-[#DC2626] leading-none font-bold ml-0.5">×</button>
+        </span>
+      ))}
+      <input
+        value={input}
+        onChange={e => setInput(e.target.value)}
+        onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); adicionar(); } if (e.key === "," || e.key === ";") { e.preventDefault(); adicionar(); } }}
+        placeholder={valores.length === 0 ? placeholder : ""}
+        className="flex-1 min-w-[100px] text-[12px] outline-none bg-transparent h-[22px]"
+      />
+      {input.trim() && (
+        <button type="button" onClick={adicionar} className="text-[var(--violet)] text-[12px] font-bold px-1 hover:bg-[var(--violet-light)] rounded">+</button>
+      )}
+    </div>
+  );
+}
+
+const TEMPLATE_VAZIO: { titulo: string; categoria: string; situacao: string; assunto: string; conteudo: string; tags: string[]; variaveis: string[]; cc: string[] } = {
+  titulo: "", categoria: "EMAIL", situacao: "", assunto: "", conteudo: "", tags: [], variaveis: [], cc: [],
 };
 
 export default function ModelosPage() {
@@ -108,9 +140,9 @@ export default function ModelosPage() {
       situacao: t.situacao ?? "",
       assunto: t.assunto ?? "",
       conteudo: t.conteudo,
-      tags: t.tags.join(", "),
-      variaveis: t.variaveis.join(", "),
-      cc: t.cc.join(", "),
+      tags: t.tags,
+      variaveis: t.variaveis,
+      cc: t.cc,
     });
     setEditOpen(true);
   }
@@ -121,8 +153,7 @@ export default function ModelosPage() {
 
     // Extrai variáveis automaticamente do conteúdo
     const varsAutoDetect = extrairVariaveis(form.conteudo);
-    const varsManuais = form.variaveis.split(",").map(v => v.trim()).filter(Boolean);
-    const todasVars = Array.from(new Set([...varsAutoDetect, ...varsManuais]));
+    const todasVars = Array.from(new Set([...varsAutoDetect, ...form.variaveis]));
 
     const payload = {
       titulo: form.titulo,
@@ -130,9 +161,9 @@ export default function ModelosPage() {
       situacao: form.situacao || null,
       assunto: form.assunto || null,
       conteudo: form.conteudo,
-      tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
+      tags: form.tags,
       variaveis: todasVars,
-      cc: form.cc.split(",").map(v => v.trim()).filter(Boolean),
+      cc: form.cc,
     };
 
     const url = editando ? `/api/templates/${editando.id}` : "/api/templates";
@@ -443,9 +474,7 @@ export default function ModelosPage() {
                   <label className="label-xs block mb-1">
                     CC — Cópia <span className="font-normal normal-case text-[var(--gray-mid)]">(separados por vírgula — e-mail direto ou cargo, ex: &quot;GM da operação&quot;)</span>
                   </label>
-                  <input value={form.cc} onChange={e => setForm(p => ({ ...p, cc: e.target.value }))}
-                    className="w-full h-[34px] px-3 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]"
-                    placeholder="Ex: juridico@scooto.com.br, GM da operação, CEO" />
+                  <ChipInput valores={form.cc} onChange={v => setForm(p => ({ ...p, cc: v }))} placeholder="Ex: juridico@scooto.com.br, GM da operação..." />
                   <p className="text-[10px] text-[var(--gray-mid)] mt-1">E-mails ficam em azul · Cargos ficam em amarelo (precisa buscar o e-mail na hora do envio)</p>
                 </div>
               )}
@@ -474,16 +503,12 @@ export default function ModelosPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="label-xs block mb-1">Tags <span className="font-normal normal-case text-[var(--gray-mid)]">(separadas por vírgula)</span></label>
-                  <input value={form.tags} onChange={e => setForm(p => ({ ...p, tags: e.target.value }))}
-                    className="w-full h-[34px] px-3 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]"
-                    placeholder="Ex: contrato, prazo, cliente" />
+                  <label className="label-xs block mb-1">Tags <span className="font-normal normal-case text-[var(--gray-mid)]">(Enter para adicionar)</span></label>
+                  <ChipInput valores={form.tags} onChange={v => setForm(p => ({ ...p, tags: v }))} placeholder="Ex: contrato, prazo..." />
                 </div>
                 <div>
                   <label className="label-xs block mb-1">Variáveis extras <span className="font-normal normal-case text-[var(--gray-mid)]">(além das detectadas)</span></label>
-                  <input value={form.variaveis} onChange={e => setForm(p => ({ ...p, variaveis: e.target.value }))}
-                    className="w-full h-[34px] px-3 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]"
-                    placeholder="Ex: nome_advogado, data" />
+                  <ChipInput valores={form.variaveis} onChange={v => setForm(p => ({ ...p, variaveis: v }))} placeholder="Ex: nome_advogado..." />
                 </div>
               </div>
             </div>
