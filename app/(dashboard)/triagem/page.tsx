@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 
 type Email = {
   id: string;
@@ -26,6 +27,7 @@ const PRIORIDADES = ["BAIXA", "NORMAL", "ALTA", "URGENTE"];
 const LABEL_DEFAULT = "demanda";
 
 export default function TriagemPage() {
+  const { data: session } = useSession();
   const [conectado, setConectado] = useState<boolean | null>(null);
   const [gmailEmail, setGmailEmail] = useState<string | null>(null);
   const [emails, setEmails] = useState<Email[]>([]);
@@ -86,6 +88,7 @@ export default function TriagemPage() {
           ...form,
           descricao: form.descricao || "",
           prazo: form.prazo ? `${form.prazo}T12:00:00.000Z` : undefined,
+          responsavelId: session?.user?.id ?? null,
         }),
       });
       if (res.ok) {
