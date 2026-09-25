@@ -82,7 +82,7 @@ export default function TriagemPage() {
         body: JSON.stringify(form),
       });
       if (res.ok) {
-        setCriados(prev => new Set([...prev, selecionado.id]));
+        setCriados(prev => new Set(Array.from(prev).concat(selecionado.id)));
         setSelecionado(null);
       }
     } finally {
