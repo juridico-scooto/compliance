@@ -27,8 +27,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { titulo, descricao, tipo, prioridade, solicitante, emailSolicitante, setor, operacao, cliente, anexos, responsavelId, prazo, prazoSolicitado } = body;
 
-  if (!titulo || !descricao || !tipo || !solicitante) {
-    return NextResponse.json({ error: "Campos obrigatórios: titulo, descricao, tipo, solicitante" }, { status: 400 });
+  if (!titulo || !tipo || !solicitante) {
+    return NextResponse.json({ error: "Campos obrigatórios: titulo, tipo, solicitante" }, { status: 400 });
   }
 
   const demanda = await prisma.demanda.create({

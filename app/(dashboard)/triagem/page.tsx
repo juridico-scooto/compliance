@@ -84,8 +84,8 @@ export default function TriagemPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          descricao: form.descricao || "(sem descrição)",
-          prazo: form.prazo ? new Date(form.prazo).toISOString() : undefined,
+          descricao: form.descricao || "",
+          prazo: form.prazo ? `${form.prazo}T12:00:00.000Z` : undefined,
         }),
       });
       if (res.ok) {
