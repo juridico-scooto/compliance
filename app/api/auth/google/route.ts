@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID!,
-    redirect_uri: `${process.env.NEXTAUTH_URL?.replace("http://localhost:3000", "https://scooto-compliance.vercel.app")}/api/auth/google/callback`,
+    redirect_uri: "https://compliance-git-main-scooto.vercel.app/api/auth/google/callback",
     response_type: "code",
     scope: SCOPES,
     access_type: "offline",

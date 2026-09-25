@@ -7,10 +7,10 @@ export async function GET(req: NextRequest) {
   const userId = searchParams.get("state");
 
   if (!code || !userId) {
-    return NextResponse.redirect("https://scooto-compliance.vercel.app/admin?gmail=erro");
+    return NextResponse.redirect("https://compliance-git-main-scooto.vercel.app/admin?gmail=erro");
   }
 
-  const redirectUri = "https://scooto-compliance.vercel.app/api/auth/google/callback";
+  const redirectUri = "https://compliance-git-main-scooto.vercel.app/api/auth/google/callback";
 
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -40,5 +40,5 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  return NextResponse.redirect("https://scooto-compliance.vercel.app/admin?gmail=ok");
+  return NextResponse.redirect("https://compliance-git-main-scooto.vercel.app/triagem?gmail=ok");
 }
