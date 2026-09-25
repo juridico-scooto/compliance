@@ -24,7 +24,7 @@ export default function LoginPage() {
     if (res?.error) {
       setError("E-mail ou senha inválidos.");
     } else {
-      router.push("/due-diligence");
+      router.push("/home");
     }
   }
 
