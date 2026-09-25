@@ -36,10 +36,10 @@ export default function LoginPage() {
           <div className="inline-flex items-center gap-2.5 justify-center">
             <span className="text-[28px] font-extrabold text-[var(--violet)] tracking-tight leading-none">scooto</span>
             <div className="w-px h-6 bg-[var(--gray-border)]" />
-            <span className="text-[13px] font-semibold text-[var(--text-secondary)] uppercase tracking-widest">Compliance</span>
+            <span className="text-[13px] font-semibold text-[var(--text-secondary)] uppercase tracking-widest">Jurídico</span>
           </div>
           <p className="text-[13px] text-[var(--text-secondary)] mt-3 font-medium">
-            Acesse o sistema regulatório interno
+            Sistema jurídico interno da Scooto
           </p>
         </div>
 
@@ -90,7 +90,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-[11px] text-[var(--text-secondary)] mt-5 font-medium">
-          Acesso restrito ao departamento jurídico e scooteiras da Scooto.
+          Acesso restrito ao jurídico
         </p>
       </div>
     </div>
