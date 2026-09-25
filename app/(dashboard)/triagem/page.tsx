@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type Email = {
   id: string;
@@ -43,7 +43,7 @@ export default function TriagemPage() {
   const [salvando, setSalvando] = useState(false);
   const [criados, setCriados] = useState<Set<string>>(new Set());
 
-  async function buscar(lbl = label) {
+  const buscar = useCallback(async (lbl = label) => {
     setLoading(true);
     try {
       const res = await fetch(`/api/gmail/emails?label=${encodeURIComponent(lbl)}`);
@@ -55,9 +55,10 @@ export default function TriagemPage() {
     } finally {
       setLoading(false);
     }
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  useEffect(() => { buscar(); }, [buscar]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { buscar(); }, [buscar]);
 
   function abrirEmail(email: Email) {
     setSelecionado(email);
