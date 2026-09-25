@@ -57,7 +57,7 @@ export default function TriagemPage() {
     }
   }
 
-  useEffect(() => { buscar(); }, []);
+  useEffect(() => { buscar(); }, [buscar]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function abrirEmail(email: Email) {
     setSelecionado(email);

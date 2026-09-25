@@ -7,7 +7,7 @@ const SCOPES = [
   "https://www.googleapis.com/auth/gmail.labels",
 ].join(" ");
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
