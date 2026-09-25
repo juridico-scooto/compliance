@@ -15,7 +15,7 @@ export async function GET() {
 
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID!,
-    redirect_uri: "https://juridico-scooto.vercel.app/api/auth/google/callback",
+    redirect_uri: "https://compliance-pearl.vercel.app/api/auth/google/callback",
     response_type: "code",
     scope: SCOPES,
     access_type: "offline",
