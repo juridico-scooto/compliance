@@ -18,6 +18,7 @@ type FormDemanda = {
   emailSolicitante: string;
   tipo: string;
   prioridade: string;
+  prazo: string;
 };
 
 const TIPOS = ["CONTRATO", "PROCESSO", "CONSULTA_JURIDICA", "DOCUMENTO", "OUTRO"];
@@ -69,6 +70,7 @@ export default function TriagemPage() {
       emailSolicitante: email.emailRemetente,
       tipo: "OUTRO",
       prioridade: "NORMAL",
+      prazo: "",
     });
   }
 
@@ -79,7 +81,7 @@ export default function TriagemPage() {
       const res = await fetch("/api/demandas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, prazo: form.prazo ? new Date(form.prazo).toISOString() : undefined }),
       });
       if (res.ok) {
         setCriados(prev => new Set(Array.from(prev).concat(selecionado.id)));
@@ -262,7 +264,7 @@ export default function TriagemPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1">Tipo</label>
                   <select
@@ -282,6 +284,15 @@ export default function TriagemPage() {
                   >
                     {PRIORIDADES.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1">Prazo</label>
+                  <input
+                    type="date"
+                    value={form.prazo}
+                    onChange={e => setForm(f => ({ ...f, prazo: e.target.value }))}
+                    className="w-full border border-[var(--gray-border)] rounded-lg px-3 py-2 text-[13px] outline-none focus:border-[var(--violet)]"
+                  />
                 </div>
               </div>
 
