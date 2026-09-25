@@ -40,6 +40,7 @@ export default function TriagemPage() {
     emailSolicitante: "",
     tipo: "OUTRO",
     prioridade: "NORMAL",
+    prazo: "",
   });
   const [salvando, setSalvando] = useState(false);
   const [criados, setCriados] = useState<Set<string>>(new Set());
