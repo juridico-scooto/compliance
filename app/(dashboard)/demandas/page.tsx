@@ -42,7 +42,7 @@ function fmtData(s: string | null) {
   if (!s) return null;
   const d = new Date(s);
   if (isNaN(d.getTime())) return null;
-  return d.toLocaleDateString("pt-BR");
+  return d.toLocaleDateString("pt-BR", { timeZone: "UTC" });
 }
 
 function prazoClass(prazo: string | null) {
