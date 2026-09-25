@@ -82,7 +82,11 @@ export default function TriagemPage() {
       const res = await fetch("/api/demandas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, prazo: form.prazo ? new Date(form.prazo).toISOString() : undefined }),
+        body: JSON.stringify({
+          ...form,
+          descricao: form.descricao || "(sem descrição)",
+          prazo: form.prazo ? new Date(form.prazo).toISOString() : undefined,
+        }),
       });
       if (res.ok) {
         setCriados(prev => new Set(Array.from(prev).concat(selecionado.id)));
