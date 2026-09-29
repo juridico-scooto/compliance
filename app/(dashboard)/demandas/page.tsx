@@ -130,6 +130,12 @@ function DemandasInner() {
       });
       if (res.ok) {
         setEmailCriados(prev => new Set(Array.from(prev).concat(email.id)));
+        // Remove etiqueta do Gmail para não aparecer mais na triagem
+        fetch("/api/gmail/remove-label", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messageId: email.id, labelName: "demanda" }),
+        }).catch(() => {});
         carregar();
       }
     } finally {

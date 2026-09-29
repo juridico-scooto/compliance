@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 const SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly",
   "https://www.googleapis.com/auth/gmail.labels",
+  "https://www.googleapis.com/auth/gmail.modify",
 ].join(" ");
 
 export async function GET() {

@@ -93,6 +93,11 @@ export default function TriagemPage() {
       });
       if (res.ok) {
         setCriados(prev => new Set(Array.from(prev).concat(selecionado.id)));
+        fetch("/api/gmail/remove-label", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messageId: selecionado.id, labelName: label }),
+        }).catch(() => {});
         setSelecionado(null);
       }
     } finally {
