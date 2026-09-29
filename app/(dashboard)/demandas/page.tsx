@@ -91,6 +91,52 @@ function DemandasInner() {
   const [novaOpen, setNovaOpen] = useState(false);
   const [novaDemanda, setNovaDemanda] = useState({ titulo: "", descricao: "", tipo: "CONSULTA_JURIDICA", prioridade: "NORMAL", solicitante: "", setor: "", responsavelId: "", prazo: "" });
 
+  // Triagem de e-mails
+  type EmailTriagem = { id: string; assunto: string; remetente: string; emailRemetente: string; data: string; corpo: string };
+  const [emailsTriagem, setEmailsTriagem] = useState<EmailTriagem[]>([]);
+  const [gmailConectado, setGmailConectado] = useState(false);
+  const [criandoEmail, setCriandoEmail] = useState<string | null>(null);
+  const [emailCriados, setEmailCriados] = useState<Set<string>>(new Set());
+
+  const carregarEmailsTriagem = useCallback(async () => {
+    try {
+      const res = await fetch("/api/gmail/emails?label=demanda");
+      if (!res.ok) return;
+      const data = await res.json();
+      setGmailConectado(data.conectado ?? false);
+      setEmailsTriagem(data.emails ?? []);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (status === "authenticated") carregarEmailsTriagem();
+  }, [status, carregarEmailsTriagem]);
+
+  async function criarDemandaDeEmail(email: EmailTriagem) {
+    setCriandoEmail(email.id);
+    try {
+      const res = await fetch("/api/demandas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo: email.assunto || "Sem assunto",
+          descricao: email.corpo || "",
+          tipo: "OUTRO",
+          prioridade: "NORMAL",
+          solicitante: email.remetente,
+          emailSolicitante: email.emailRemetente,
+          responsavelId: session?.user?.id ?? null,
+        }),
+      });
+      if (res.ok) {
+        setEmailCriados(prev => new Set(Array.from(prev).concat(email.id)));
+        carregar();
+      }
+    } finally {
+      setCriandoEmail(null);
+    }
+  }
+
   useEffect(() => {
     if (status === "unauthenticated") { router.push("/login"); return; }
     if (status === "authenticated") { carregar(); carregarStatuses(); carregarUsuarios(); }
@@ -253,7 +299,42 @@ function DemandasInner() {
         <div className="flex justify-center py-16"><div className="spinner" /></div>
       ) : (
         <div className="flex-1 overflow-x-auto p-6">
-          <div className="flex gap-4 h-full" style={{ minWidth: `${statusCols.length * 300}px` }}>
+          <div className="flex gap-4 h-full" style={{ minWidth: `${(statusCols.length + (gmailConectado ? 1 : 0)) * 300}px` }}>
+
+            {/* Coluna Triagem */}
+            {gmailConectado && (
+              <div className="flex flex-col w-[280px] shrink-0">
+                <div className="flex items-center gap-2 mb-3 px-1">
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: "#FEF3C7", color: "#92400E" }}>
+                    📬 Triagem
+                  </span>
+                  <span className="text-[11px] text-[var(--text-secondary)]">{emailsTriagem.filter(e => !emailCriados.has(e.id)).length}</span>
+                  <button onClick={carregarEmailsTriagem} className="ml-auto text-[10px] text-[var(--violet)] hover:underline">↻</button>
+                </div>
+                <div className="flex-1 space-y-2 overflow-y-auto max-h-[calc(100vh-160px)] pr-1">
+                  {emailsTriagem.filter(e => !emailCriados.has(e.id)).length === 0 ? (
+                    <div className="border-2 border-dashed border-[var(--gray-border)] rounded-card h-16 flex items-center justify-center">
+                      <p className="text-[11px] text-[var(--gray-mid)]">Nenhum e-mail</p>
+                    </div>
+                  ) : emailsTriagem.filter(e => !emailCriados.has(e.id)).map(email => (
+                    <div key={email.id} className="w-full text-left bg-[#FFFBEB] border border-[#FDE68A] rounded-card p-3.5">
+                      <p className="text-[12px] font-bold text-[var(--text-primary)] leading-snug line-clamp-2 mb-1">
+                        {email.assunto || "(sem assunto)"}
+                      </p>
+                      <p className="text-[11px] text-[var(--text-secondary)] mb-1">{email.remetente}</p>
+                      <p className="text-[11px] text-[var(--text-secondary)] line-clamp-2 mb-3">{email.corpo}</p>
+                      <button
+                        onClick={() => criarDemandaDeEmail(email)}
+                        disabled={criandoEmail === email.id}
+                        className="w-full text-[11px] font-bold py-1.5 rounded bg-[var(--violet)] text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+                      >
+                        {criandoEmail === email.id ? "Criando..." : "+ Criar demanda"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {statusCols.map(col => {
               const cards = filtradas.filter(d => d.status === col.id);
               return (
@@ -314,9 +395,23 @@ function DemandasInner() {
                 <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide">{TIPO_LABEL[detalhe.tipo] ?? detalhe.tipo}</p>
                 <h2 className="text-[16px] font-extrabold text-[var(--text-primary)] mt-0.5">{detalhe.titulo}</h2>
               </div>
-              <button onClick={() => setDetalhe(null)} className="text-[var(--gray-mid)] hover:text-[var(--text-primary)] mt-0.5 shrink-0 ml-4">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
+              <div className="flex items-center gap-2 ml-4 shrink-0">
+                <button
+                  onClick={async () => {
+                    if (!confirm("Excluir esta demanda? Essa ação não pode ser desfeita.")) return;
+                    await fetch(`/api/demandas/${detalhe.id}`, { method: "DELETE" });
+                    setDemandas(prev => prev.filter(d => d.id !== detalhe.id));
+                    setDetalhe(null);
+                  }}
+                  className="text-[#EF4444] hover:opacity-70 mt-0.5"
+                  title="Excluir demanda"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                </button>
+                <button onClick={() => setDetalhe(null)} className="text-[var(--gray-mid)] hover:text-[var(--text-primary)] mt-0.5">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
             </div>
 
             <div className="px-6 py-5 space-y-5">

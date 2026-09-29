@@ -3,7 +3,7 @@ import "./globals.css";
 import AuthSessionProvider from "@/components/session-provider";
 
 export const metadata: Metadata = {
-  title: "Scooto Compliance",
+  title: "Scooto Jurídico",
   description: "Sistema de compliance interno da Scooto",
 };
 
