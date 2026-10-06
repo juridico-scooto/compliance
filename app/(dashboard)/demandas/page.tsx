@@ -258,14 +258,14 @@ function DemandasInner() {
   return (
     <>
       {/* Topbar */}
-      <div className="sticky top-0 z-40 bg-white border-b border-[var(--gray-border)] px-8 py-4 flex items-center justify-between gap-4">
+      <div className="sticky top-0 z-40 bg-white border-b border-[var(--gray-border)] px-8 py-4 flex items-center justify-between gap-4" style={{ minWidth: 0, maxWidth: "100vw", overflowX: "hidden" }}>
         <div className="shrink-0">
           <h1 className="text-[15px] font-extrabold text-[var(--text-primary)] leading-tight">Demandas Jurídicas</h1>
           <p className="text-[12px] text-[var(--text-secondary)]">Controle de tarefas, prazos e responsáveis</p>
         </div>
 
         {/* Filtros */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           <input
             value={filtroSolicitante}
             onChange={e => setFiltroSolicitante(e.target.value)}
@@ -307,40 +307,6 @@ function DemandasInner() {
         <div className="flex-1 overflow-x-auto p-6">
           <div className="flex gap-4 h-full" style={{ minWidth: `${(statusCols.length + (gmailConectado ? 1 : 0)) * 300}px` }}>
 
-            {/* Coluna Triagem */}
-            {gmailConectado && (
-              <div className="flex flex-col w-[280px] shrink-0">
-                <div className="flex items-center gap-2 mb-3 px-1">
-                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: "#FEF3C7", color: "#92400E" }}>
-                    📬 Triagem
-                  </span>
-                  <span className="text-[11px] text-[var(--text-secondary)]">{emailsTriagem.filter(e => !emailCriados.has(e.id)).length}</span>
-                  <button onClick={carregarEmailsTriagem} className="ml-auto text-[10px] text-[var(--violet)] hover:underline">↻</button>
-                </div>
-                <div className="flex-1 space-y-2 overflow-y-auto max-h-[calc(100vh-160px)] pr-1">
-                  {emailsTriagem.filter(e => !emailCriados.has(e.id)).length === 0 ? (
-                    <div className="border-2 border-dashed border-[var(--gray-border)] rounded-card h-16 flex items-center justify-center">
-                      <p className="text-[11px] text-[var(--gray-mid)]">Nenhum e-mail</p>
-                    </div>
-                  ) : emailsTriagem.filter(e => !emailCriados.has(e.id)).map(email => (
-                    <div key={email.id} className="w-full text-left bg-[#FFFBEB] border border-[#FDE68A] rounded-card p-3.5">
-                      <p className="text-[12px] font-bold text-[var(--text-primary)] leading-snug line-clamp-2 mb-1">
-                        {email.assunto || "(sem assunto)"}
-                      </p>
-                      <p className="text-[11px] text-[var(--text-secondary)] mb-1">{email.remetente}</p>
-                      <p className="text-[11px] text-[var(--text-secondary)] line-clamp-2 mb-3">{email.corpo}</p>
-                      <button
-                        onClick={() => criarDemandaDeEmail(email)}
-                        disabled={criandoEmail === email.id}
-                        className="w-full text-[11px] font-bold py-1.5 rounded bg-[var(--violet)] text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
-                      >
-                        {criandoEmail === email.id ? "Criando..." : "+ Criar demanda"}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
             {statusCols.map(col => {
               const cards = filtradas.filter(d => d.status === col.id);
               return (
@@ -386,6 +352,41 @@ function DemandasInner() {
                 </div>
               );
             })}
+
+            {/* Coluna Triagem — no final */}
+            {gmailConectado && (
+              <div className="flex flex-col w-[280px] shrink-0">
+                <div className="flex items-center gap-2 mb-3 px-1">
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: "#FEF3C7", color: "#92400E" }}>
+                    📬 Triagem
+                  </span>
+                  <span className="text-[11px] text-[var(--text-secondary)]">{emailsTriagem.filter(e => !emailCriados.has(e.id)).length}</span>
+                  <button onClick={carregarEmailsTriagem} className="ml-auto text-[10px] text-[var(--violet)] hover:underline">↻</button>
+                </div>
+                <div className="flex-1 space-y-2 overflow-y-auto max-h-[calc(100vh-160px)] pr-1">
+                  {emailsTriagem.filter(e => !emailCriados.has(e.id)).length === 0 ? (
+                    <div className="border-2 border-dashed border-[var(--gray-border)] rounded-card h-16 flex items-center justify-center">
+                      <p className="text-[11px] text-[var(--gray-mid)]">Nenhum e-mail</p>
+                    </div>
+                  ) : emailsTriagem.filter(e => !emailCriados.has(e.id)).map(email => (
+                    <div key={email.id} className="w-full text-left bg-[#FFFBEB] border border-[#FDE68A] rounded-card p-3.5">
+                      <p className="text-[12px] font-bold text-[var(--text-primary)] leading-snug line-clamp-2 mb-1">
+                        {email.assunto || "(sem assunto)"}
+                      </p>
+                      <p className="text-[11px] text-[var(--text-secondary)] mb-1">{email.remetente}</p>
+                      <p className="text-[11px] text-[var(--text-secondary)] line-clamp-2 mb-3">{email.corpo}</p>
+                      <button
+                        onClick={() => criarDemandaDeEmail(email)}
+                        disabled={criandoEmail === email.id}
+                        className="w-full text-[11px] font-bold py-1.5 rounded bg-[var(--violet)] text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+                      >
+                        {criandoEmail === email.id ? "Criando..." : "+ Criar demanda"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
