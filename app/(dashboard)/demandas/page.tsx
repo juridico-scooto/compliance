@@ -258,47 +258,58 @@ function DemandasInner() {
   return (
     <>
       {/* Topbar */}
-      <div className="sticky top-0 z-40 bg-white border-b border-[var(--gray-border)] px-8 py-4 flex items-center justify-between gap-4" style={{ minWidth: 0, maxWidth: "100vw", overflowX: "hidden" }}>
-        <div className="shrink-0">
-          <h1 className="text-[15px] font-extrabold text-[var(--text-primary)] leading-tight">Demandas Jurídicas</h1>
-          <p className="text-[12px] text-[var(--text-secondary)]">Controle de tarefas, prazos e responsáveis</p>
-        </div>
-
-        {/* Filtros */}
-        <div className="flex items-center gap-2 flex-wrap justify-end">
-          <input
-            value={filtroSolicitante}
-            onChange={e => setFiltroSolicitante(e.target.value)}
-            placeholder="Buscar solicitante..."
-            className="h-[32px] px-3 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)] w-40"
-          />
-          <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}
-            className="h-[32px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none">
-            <option value="">Todos os status</option>
-            {statusCols.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
-          </select>
-          <select value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)}
-            className="h-[32px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none">
-            <option value="">Todos responsáveis</option>
-            {usuarios.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-          </select>
-          <select value={filtroPrioridade} onChange={e => setFiltroPrioridade(e.target.value)}
-            className="h-[32px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none">
-            <option value="">Todas prioridades</option>
-            {Object.entries(PRIORIDADE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
-          <select value={ordenacao} onChange={e => setOrdenacao(e.target.value as "criadoEm" | "prazo")}
-            className="h-[32px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none">
-            <option value="criadoEm">Mais recentes</option>
-            <option value="prazo">Prazo mais próximo</option>
-          </select>
+      {/* Topbar fixo — imune ao scroll horizontal do kanban */}
+      <div style={{ position: "fixed", top: 0, left: "var(--sidebar-w)", right: 0, zIndex: 40, background: "white", borderBottom: "1px solid var(--gray-border)", padding: "12px 24px", display: "flex", alignItems: "center", gap: 16 }}>
+        {/* Título + Nova: sempre visíveis à esquerda */}
+        <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 12 }}>
+          <div>
+            <h1 className="text-[15px] font-extrabold text-[var(--text-primary)] leading-tight">Demandas Jurídicas</h1>
+            <p className="text-[12px] text-[var(--text-secondary)]">Controle de tarefas, prazos e responsáveis</p>
+          </div>
           <button onClick={() => setNovaOpen(true)}
             className="h-[32px] px-4 bg-[var(--violet)] text-white rounded-sm text-[12px] font-bold flex items-center gap-1.5 hover:bg-[var(--violet-dark)] transition-colors shrink-0">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Nova
           </button>
         </div>
+
+        {/* Filtros: ocupam o restante da largura, cortam se necessário */}
+        <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, overflow: "hidden", justifyContent: "flex-end" }}>
+          <input
+            value={filtroSolicitante}
+            onChange={e => setFiltroSolicitante(e.target.value)}
+            placeholder="Buscar solicitante..."
+            className="h-[32px] px-3 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]"
+            style={{ minWidth: 0, width: 140, flexShrink: 1 }}
+          />
+          <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}
+            className="h-[32px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none"
+            style={{ minWidth: 0, flexShrink: 1 }}>
+            <option value="">Todos os status</option>
+            {statusCols.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+          </select>
+          <select value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)}
+            className="h-[32px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none"
+            style={{ minWidth: 0, flexShrink: 1 }}>
+            <option value="">Todos responsáveis</option>
+            {usuarios.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+          <select value={filtroPrioridade} onChange={e => setFiltroPrioridade(e.target.value)}
+            className="h-[32px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none"
+            style={{ minWidth: 0, flexShrink: 1 }}>
+            <option value="">Todas prioridades</option>
+            {Object.entries(PRIORIDADE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+          <select value={ordenacao} onChange={e => setOrdenacao(e.target.value as "criadoEm" | "prazo")}
+            className="h-[32px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none"
+            style={{ minWidth: 0, flexShrink: 1 }}>
+            <option value="criadoEm">Mais recentes</option>
+            <option value="prazo">Prazo mais próximo</option>
+          </select>
+        </div>
       </div>
+      {/* Espaço reservado para o topbar fixo */}
+      <div style={{ height: 65 }} />
 
       {/* Kanban */}
       {loading ? (

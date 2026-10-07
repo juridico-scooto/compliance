@@ -20,8 +20,9 @@ model User {
   consultas    Consulta[]
   demandas     Demanda[]
   comentarios  Comentario[]  @relation("AutorComentarios")
-  notificacoes Notificacao[] @relation("NotificacoesRecebidas")
-  templates    Template[]
+  notificacoes    Notificacao[]    @relation("NotificacoesRecebidas")
+  templates       Template[]
+  registrosDiarios RegistroDiario[] @relation("RegistrosDiarios")
 }
 
 enum Role {
@@ -144,6 +145,29 @@ enum Prioridade {
   NORMAL
   ALTA
   URGENTE
+}
+
+model TarefaDiaria {
+  id        String          @id @default(cuid())
+  nome      String
+  descricao String?
+  ativa     Boolean         @default(true)
+  ordem     Int             @default(0)
+  criadoEm DateTime        @default(now())
+  registros RegistroDiario[]
+}
+
+model RegistroDiario {
+  id          String       @id @default(cuid())
+  tarefaId    String
+  tarefa      TarefaDiaria @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
+  usuarioId   String
+  usuario     User         @relation("RegistrosDiarios", fields: [usuarioId], references: [id])
+  data        DateTime     // apenas a data (salva como meia-noite UTC)
+  criadoEm   DateTime     @default(now())
+
+  @@unique([tarefaId, data])
+  @@index([data])
 }
 
 model PgfnDevedor {

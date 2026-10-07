@@ -4,6 +4,15 @@ import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
+type TarefaDiaria = {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  concluidaHoje: boolean;
+  concluidaPor: { id: string; name: string } | null;
+  concluidaEm: string | null;
+};
+
 type Demanda = {
   id: string;
   titulo: string;
@@ -70,6 +79,17 @@ export default function HomePage() {
   const [minhasDemandas, setMinhasDemandas] = useState<Demanda[]>([]);
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tarefasDiarias, setTarefasDiarias] = useState<TarefaDiaria[]>([]);
+  const [marcando, setMarcando] = useState<string | null>(null);
+  const [novaRotinaOpen, setNovaRotinaOpen] = useState(false);
+  const [novaRotinaNome, setNovaRotinaNome] = useState("");
+  const [novaRotinaDesc, setNovaRotinaDesc] = useState("");
+  const [salvandoRotina, setSalvandoRotina] = useState(false);
+
+  const carregarTarefas = useCallback(async () => {
+    const r = await fetch("/api/tarefas-diarias");
+    if (r.ok) setTarefasDiarias(await r.json());
+  }, []);
 
   const carregar = useCallback(async (userId: string) => {
     setLoading(true);
@@ -84,9 +104,60 @@ export default function HomePage() {
 
   useEffect(() => {
     if (status === "unauthenticated") { router.push("/login"); return; }
-    if (status === "authenticated" && session?.user?.id) carregar(session.user.id);
+    if (status === "authenticated" && session?.user?.id) {
+      carregar(session.user.id);
+      carregarTarefas();
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
+
+  async function concluirTarefa(tarefaId: string) {
+    setMarcando(tarefaId);
+    const r = await fetch("/api/tarefas-diarias", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tarefaId }),
+    });
+    if (r.ok) {
+      const data = await r.json();
+      setTarefasDiarias(prev => prev.map(t =>
+        t.id === tarefaId
+          ? { ...t, concluidaHoje: true, concluidaPor: data.concluidaPor, concluidaEm: data.concluidaEm }
+          : t
+      ));
+    }
+    setMarcando(null);
+  }
+
+  async function desfazerTarefa(tarefaId: string) {
+    setMarcando(tarefaId);
+    await fetch("/api/tarefas-diarias", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tarefaId }),
+    });
+    setTarefasDiarias(prev => prev.map(t =>
+      t.id === tarefaId ? { ...t, concluidaHoje: false, concluidaPor: null, concluidaEm: null } : t
+    ));
+    setMarcando(null);
+  }
+
+  async function criarRotina() {
+    if (!novaRotinaNome.trim()) return;
+    setSalvandoRotina(true);
+    const r = await fetch("/api/tarefas-diarias", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "criar", nome: novaRotinaNome.trim(), descricao: novaRotinaDesc.trim() || null }),
+    });
+    if (r.ok) {
+      await carregarTarefas();
+      setNovaRotinaNome("");
+      setNovaRotinaDesc("");
+      setNovaRotinaOpen(false);
+    }
+    setSalvandoRotina(false);
+  }
 
   async function marcarLida(id: string) {
     await fetch("/api/notificacoes", {
@@ -128,6 +199,100 @@ export default function HomePage() {
       </div>
 
       <div className="p-8 space-y-8 max-w-5xl">
+
+        {/* Rotinas diárias */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-[13px] font-extrabold text-[var(--text-primary)]">Rotinas do dia</h2>
+              <p className="text-[11px] text-[var(--text-secondary)]">
+                {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
+              </p>
+            </div>
+            {session?.user?.role === "ADMIN" && (
+              <button onClick={() => setNovaRotinaOpen(true)}
+                className="text-[11px] text-[var(--violet)] font-semibold hover:underline flex items-center gap-1">
+                + Nova rotina
+              </button>
+            )}
+          </div>
+
+          {tarefasDiarias.length === 0 ? (
+            <div className="border-2 border-dashed border-[var(--gray-border)] rounded-card p-6 text-center">
+              <p className="text-[12px] text-[var(--text-secondary)]">Nenhuma rotina cadastrada</p>
+              {session?.user?.role === "ADMIN" && (
+                <button onClick={() => setNovaRotinaOpen(true)} className="text-[11px] text-[var(--violet)] mt-1 hover:underline">
+                  Adicionar primeira rotina
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {tarefasDiarias.map(t => (
+                <div key={t.id}
+                  className={`border rounded-card px-4 py-3 flex items-start gap-3 transition-all ${t.concluidaHoje ? "bg-[#F0FDF4] border-[#86EFAC]" : "bg-white border-[var(--gray-border)]"}`}>
+                  <button
+                    onClick={() => t.concluidaHoje ? desfazerTarefa(t.id) : concluirTarefa(t.id)}
+                    disabled={marcando === t.id}
+                    className={`w-5 h-5 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center transition-all ${t.concluidaHoje ? "bg-[#22C55E] border-[#22C55E]" : "border-[var(--gray-mid)] hover:border-[#22C55E]"}`}>
+                    {t.concluidaHoje && (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    )}
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-[13px] font-semibold leading-tight ${t.concluidaHoje ? "text-[#15803D] line-through decoration-[#86EFAC]" : "text-[var(--text-primary)]"}`}>
+                      {t.nome}
+                    </p>
+                    {t.concluidaHoje && t.concluidaPor ? (
+                      <p className="text-[10px] text-[#16A34A] mt-0.5">
+                        Feito por {t.concluidaPor.name.split(" ")[0]} às {new Date(t.concluidaEm!).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    ) : t.descricao ? (
+                      <p className="text-[10px] text-[var(--text-secondary)] mt-0.5 line-clamp-2">{t.descricao}</p>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Modal nova rotina */}
+        {novaRotinaOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setNovaRotinaOpen(false)}>
+            <div className="bg-white rounded-card p-6 w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
+              <h3 className="text-[14px] font-extrabold text-[var(--text-primary)] mb-4">Nova rotina diária</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[11px] font-semibold text-[var(--text-secondary)] block mb-1">Nome *</label>
+                  <input value={novaRotinaNome} onChange={e => setNovaRotinaNome(e.target.value)}
+                    placeholder="Ex: Verificar documentos das escuteiras"
+                    className="w-full h-[36px] px-3 text-[13px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]" />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-[var(--text-secondary)] block mb-1">Descrição</label>
+                  <textarea value={novaRotinaDesc} onChange={e => setNovaRotinaDesc(e.target.value)}
+                    placeholder="Detalhes opcionais..."
+                    rows={2}
+                    className="w-full px-3 py-2 text-[13px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)] resize-none" />
+                </div>
+              </div>
+              <div className="flex gap-2 mt-4 justify-end">
+                <button onClick={() => setNovaRotinaOpen(false)}
+                  className="h-[34px] px-4 text-[12px] border border-[var(--gray-border)] rounded-sm text-[var(--text-secondary)] hover:bg-[var(--gray-light)]">
+                  Cancelar
+                </button>
+                <button onClick={criarRotina} disabled={salvandoRotina || !novaRotinaNome.trim()}
+                  className="h-[34px] px-4 text-[12px] bg-[var(--violet)] text-white rounded-sm font-bold hover:bg-[var(--violet-dark)] disabled:opacity-50">
+                  {salvandoRotina ? "Salvando..." : "Salvar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4">
           {[
