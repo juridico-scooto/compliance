@@ -85,6 +85,10 @@ export default function HomePage() {
   const [novaRotinaNome, setNovaRotinaNome] = useState("");
   const [novaRotinaDesc, setNovaRotinaDesc] = useState("");
   const [salvandoRotina, setSalvandoRotina] = useState(false);
+  const [editandoRotina, setEditandoRotina] = useState<TarefaDiaria | null>(null);
+  const [editNome, setEditNome] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [salvandoEdit, setSalvandoEdit] = useState(false);
 
   const carregarTarefas = useCallback(async () => {
     const r = await fetch("/api/tarefas-diarias");
@@ -140,6 +144,29 @@ export default function HomePage() {
       t.id === tarefaId ? { ...t, concluidaHoje: false, concluidaPor: null, concluidaEm: null } : t
     ));
     setMarcando(null);
+  }
+
+  function abrirEdicao(t: TarefaDiaria) {
+    setEditandoRotina(t);
+    setEditNome(t.nome);
+    setEditDesc(t.descricao ?? "");
+  }
+
+  async function salvarEdicao() {
+    if (!editandoRotina || !editNome.trim()) return;
+    setSalvandoEdit(true);
+    const r = await fetch("/api/tarefas-diarias", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: editandoRotina.id, nome: editNome.trim(), descricao: editDesc.trim() || null }),
+    });
+    if (r.ok) {
+      setTarefasDiarias(prev => prev.map(t =>
+        t.id === editandoRotina.id ? { ...t, nome: editNome.trim(), descricao: editDesc.trim() || null } : t
+      ));
+      setEditandoRotina(null);
+    }
+    setSalvandoEdit(false);
   }
 
   async function criarRotina() {
@@ -230,7 +257,7 @@ export default function HomePage() {
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {tarefasDiarias.map(t => (
                 <div key={t.id}
-                  className={`border rounded-card px-4 py-3 flex items-start gap-3 transition-all ${t.concluidaHoje ? "bg-[#F0FDF4] border-[#86EFAC]" : "bg-white border-[var(--gray-border)]"}`}>
+                  className={`border rounded-card px-4 py-3 flex items-start gap-3 transition-all group ${t.concluidaHoje ? "bg-[#F0FDF4] border-[#86EFAC]" : "bg-white border-[var(--gray-border)]"}`}>
                   <button
                     onClick={() => t.concluidaHoje ? desfazerTarefa(t.id) : concluirTarefa(t.id)}
                     disabled={marcando === t.id}
@@ -253,6 +280,16 @@ export default function HomePage() {
                       <p className="text-[10px] text-[var(--text-secondary)] mt-0.5 line-clamp-2">{t.descricao}</p>
                     ) : null}
                   </div>
+                  {session?.user?.role === "ADMIN" && (
+                    <button onClick={() => abrirEdicao(t)}
+                      className="opacity-0 group-hover:opacity-100 shrink-0 text-[var(--gray-mid)] hover:text-[var(--violet)] transition-all mt-0.5"
+                      title="Editar rotina">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -288,6 +325,52 @@ export default function HomePage() {
                   className="h-[34px] px-4 text-[12px] bg-[var(--violet)] text-white rounded-sm font-bold hover:bg-[var(--violet-dark)] disabled:opacity-50">
                   {salvandoRotina ? "Salvando..." : "Salvar"}
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal editar rotina */}
+        {editandoRotina && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setEditandoRotina(null)}>
+            <div className="bg-white rounded-card p-6 w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
+              <h3 className="text-[14px] font-extrabold text-[var(--text-primary)] mb-4">Editar rotina</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[11px] font-semibold text-[var(--text-secondary)] block mb-1">Nome *</label>
+                  <input value={editNome} onChange={e => setEditNome(e.target.value)}
+                    className="w-full h-[36px] px-3 text-[13px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]" />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-[var(--text-secondary)] block mb-1">Descrição</label>
+                  <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)}
+                    rows={2}
+                    className="w-full px-3 py-2 text-[13px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)] resize-none" />
+                </div>
+              </div>
+              <div className="flex gap-2 mt-4 justify-between">
+                <button onClick={async () => {
+                  if (!confirm("Remover esta rotina permanentemente?")) return;
+                  await fetch("/api/tarefas-diarias", {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "desativar", tarefaId: editandoRotina.id }),
+                  });
+                  setTarefasDiarias(prev => prev.filter(t => t.id !== editandoRotina.id));
+                  setEditandoRotina(null);
+                }} className="h-[34px] px-3 text-[12px] border border-[#FCA5A5] text-[#EF4444] rounded-sm hover:bg-[#FEF2F2]">
+                  Remover
+                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => setEditandoRotina(null)}
+                    className="h-[34px] px-4 text-[12px] border border-[var(--gray-border)] rounded-sm text-[var(--text-secondary)] hover:bg-[var(--gray-light)]">
+                    Cancelar
+                  </button>
+                  <button onClick={salvarEdicao} disabled={salvandoEdit || !editNome.trim()}
+                    className="h-[34px] px-4 text-[12px] bg-[var(--violet)] text-white rounded-sm font-bold hover:bg-[var(--violet-dark)] disabled:opacity-50">
+                    {salvandoEdit ? "Salvando..." : "Salvar"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

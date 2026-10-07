@@ -70,6 +70,25 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, concluidaPor: registro.usuario, concluidaEm: registro.criadoEm });
 }
 
+// PATCH — edita nome/descrição da tarefa (apenas admin)
+export async function PATCH(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
+  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+  if (user?.role !== "ADMIN") return NextResponse.json({ error: "Apenas admins" }, { status: 403 });
+
+  const { id, nome, descricao } = await req.json();
+  if (!id || !nome?.trim()) return NextResponse.json({ error: "id e nome obrigatórios" }, { status: 400 });
+
+  const tarefa = await prisma.tarefaDiaria.update({
+    where: { id },
+    data: { nome: nome.trim(), descricao: descricao?.trim() || null },
+  });
+
+  return NextResponse.json(tarefa);
+}
+
 // DELETE — remove conclusão de hoje (desfazer) ou desativa tarefa (admin)
 export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions);
