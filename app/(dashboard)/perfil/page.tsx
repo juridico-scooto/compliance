@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import Topbar from "@/components/topbar";
 import AlterarSenhaForm from "@/components/alterar-senha-form";
+import AlterarNomeForm from "@/components/alterar-nome-form";
 
 export default async function PerfilPage() {
   const session = await getServerSession(authOptions);
@@ -28,6 +29,22 @@ export default async function PerfilPage() {
                 {session?.user?.role === "ADMIN" ? "Admin · Jurídico" : "Scooteira"}
               </span>
             </div>
+          </div>
+        </div>
+
+        {/* Alterar nome */}
+        <div className="bg-white rounded-card border border-[var(--gray-border)] overflow-hidden mb-5">
+          <div className="px-6 py-4 border-b border-[var(--gray-border)] bg-[var(--off-white)] flex items-center gap-2">
+            <div className="w-[26px] h-[26px] rounded-[7px] bg-[var(--violet-light)] flex items-center justify-center shrink-0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-[13px] h-[13px] text-[var(--violet)]">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
+            <span className="text-[11px] font-extrabold text-[var(--text-primary)] uppercase tracking-[0.07em]">Alterar Nome</span>
+          </div>
+          <div className="p-6">
+            <AlterarNomeForm nomeAtual={session?.user?.name ?? ""} />
           </div>
         </div>
 
