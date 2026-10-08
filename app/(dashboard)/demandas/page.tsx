@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 type Responsavel = { id: string; name: string };
 type StatusConfig = { id: string; nome: string; cor: string; corTexto: string; ordem: number };
+type SubstatusConfig = { id: string; nome: string; cor: string; corTexto: string };
+type HistoricoItem = { id: string; campo: string; valorAntes: string | null; valorDepois: string | null; criadoEm: string; usuario: { name: string } | null };
 
 type Demanda = {
   id: string;
@@ -14,6 +16,7 @@ type Demanda = {
   tipo: string;
   prioridade: string;
   status: string;
+  substatus: string | null;
   solicitante: string;
   emailSolicitante: string | null;
   setor: string | null;
@@ -70,8 +73,11 @@ function DemandasInner() {
 
   const [demandas, setDemandas] = useState<Demanda[]>([]);
   const [statuses, setStatuses] = useState<StatusConfig[]>([]);
+  const [substatuses, setSubstatuses] = useState<SubstatusConfig[]>([]);
   const [usuarios, setUsuarios] = useState<Responsavel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [historico, setHistorico] = useState<HistoricoItem[]>([]);
+  const [abaDetalhe, setAbaDetalhe] = useState<"detalhes" | "historico">("detalhes");
 
   // filtros
   const [filtroStatus, setFiltroStatus] = useState("");
@@ -88,6 +94,10 @@ function DemandasInner() {
   const [novoComentario, setNovoComentario] = useState("");
   const [enviandoComentario, setEnviandoComentario] = useState(false);
   const comentariosEndRef = useRef<HTMLDivElement>(null);
+  const comentarioInputRef = useRef<HTMLInputElement>(null);
+  // @mention autocomplete
+  const [mencaoQuery, setMencaoQuery] = useState<string | null>(null);
+  const [mencaoPos, setMencaoPos] = useState(0);
   const [novaOpen, setNovaOpen] = useState(false);
   const [novaDemanda, setNovaDemanda] = useState({ titulo: "", descricao: "", tipo: "CONSULTA_JURIDICA", prioridade: "NORMAL", solicitante: "", setor: "", responsavelId: "", prazo: "" });
 
@@ -145,7 +155,7 @@ function DemandasInner() {
 
   useEffect(() => {
     if (status === "unauthenticated") { router.push("/login"); return; }
-    if (status === "authenticated") { carregar(); carregarStatuses(); carregarUsuarios(); }
+    if (status === "authenticated") { carregar(); carregarStatuses(); carregarUsuarios(); carregarSubstatuses(); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
@@ -171,6 +181,11 @@ function DemandasInner() {
     if (res.ok) setStatuses(await res.json());
   }
 
+  async function carregarSubstatuses() {
+    const res = await fetch("/api/substatus-config");
+    if (res.ok) setSubstatuses(await res.json());
+  }
+
   async function carregarUsuarios() {
     const res = await fetch("/api/usuarios");
     if (res.ok) setUsuarios(await res.json());
@@ -180,13 +195,21 @@ function DemandasInner() {
     setDetalhe(d);
     setComentarios([]);
     setNovoComentario("");
-    const res = await fetch(`/api/demandas/${d.id}/comentarios`);
-    if (res.ok) setComentarios(await res.json());
+    setAbaDetalhe("detalhes");
+    setHistorico([]);
+    setMencaoQuery(null);
+    const [resC, resH] = await Promise.all([
+      fetch(`/api/demandas/${d.id}/comentarios`),
+      fetch(`/api/demandas/${d.id}/historico`),
+    ]);
+    if (resC.ok) setComentarios(await resC.json());
+    if (resH.ok) setHistorico(await resH.json());
   }
 
   async function enviarComentario() {
     if (!detalhe || !novoComentario.trim()) return;
     setEnviandoComentario(true);
+    setMencaoQuery(null);
     const res = await fetch(`/api/demandas/${detalhe.id}/comentarios`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -199,6 +222,43 @@ function DemandasInner() {
       setTimeout(() => comentariosEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
     }
     setEnviandoComentario(false);
+  }
+
+  function handleComentarioChange(val: string) {
+    setNovoComentario(val);
+    const cursor = comentarioInputRef.current?.selectionStart ?? val.length;
+    const antes = val.slice(0, cursor);
+    const match = antes.match(/@([\wÀ-ÿ]*)$/);
+    if (match) {
+      setMencaoQuery(match[1].toLowerCase());
+      setMencaoPos(cursor - match[0].length);
+    } else {
+      setMencaoQuery(null);
+    }
+  }
+
+  function inserirMencao(nome: string) {
+    const antes = novoComentario.slice(0, mencaoPos);
+    const depois = novoComentario.slice(mencaoPos).replace(/^@[\wÀ-ÿ]*/, "");
+    const novo = `${antes}@${nome} ${depois}`;
+    setNovoComentario(novo);
+    setMencaoQuery(null);
+    setTimeout(() => comentarioInputRef.current?.focus(), 0);
+  }
+
+  const CAMPO_LABEL: Record<string, string> = {
+    status: "Status", substatus: "Sub-status", responsavelId: "Responsável",
+    prioridade: "Prioridade", prazo: "Prazo interno", titulo: "Título",
+  };
+
+  function fmtHistoricoValor(campo: string, val: string | null) {
+    if (!val) return "—";
+    if (campo === "prazo") {
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? val : d.toLocaleDateString("pt-BR", { timeZone: "UTC" });
+    }
+    if (campo === "prioridade") return PRIORIDADE_LABEL[val] ?? val;
+    return val;
   }
 
   async function salvar(campo: Record<string, unknown>) {
@@ -345,7 +405,10 @@ function DemandasInner() {
                         </div>
                         <p className="text-[11px] text-[var(--text-secondary)] line-clamp-2 mb-2.5 pl-4">{d.descricao}</p>
                         <div className="pl-4 flex items-center justify-between gap-2">
-                          <span className="text-[10px] bg-[var(--gray-light)] text-[var(--text-secondary)] px-2 py-0.5 rounded-full">{TIPO_LABEL[d.tipo] ?? d.tipo}</span>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] bg-[var(--gray-light)] text-[var(--text-secondary)] px-2 py-0.5 rounded-full self-start">{TIPO_LABEL[d.tipo] ?? d.tipo}</span>
+                            {d.substatus && (() => { const ss = substatuses.find(s => s.nome === d.substatus); return ss ? <span className="text-[10px] px-2 py-0.5 rounded-full self-start font-semibold" style={{ background: ss.cor, color: ss.corTexto }}>{ss.nome}</span> : <span className="text-[10px] bg-[#EDE9FE] text-[#6D28D9] px-2 py-0.5 rounded-full self-start">{d.substatus}</span>; })()}
+                          </div>
                           <div className="text-right">
                             {d.responsavel && <p className="text-[11px] font-semibold text-[var(--text-primary)]">{d.responsavel.name.split(" ")[0]}</p>}
                             {d.prazo && <p className={`text-[10px] ${prazoClass(d.prazo)}`}>{fmtData(d.prazo)}</p>}
@@ -408,31 +471,75 @@ function DemandasInner() {
           <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
           <div className="relative bg-white rounded-card border border-[var(--gray-border)] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             {/* Header */}
-            <div className="px-6 py-4 border-b border-[var(--gray-border)] flex items-start justify-between sticky top-0 bg-white z-10">
-              <div>
-                <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide">{TIPO_LABEL[detalhe.tipo] ?? detalhe.tipo}</p>
-                <h2 className="text-[16px] font-extrabold text-[var(--text-primary)] mt-0.5">{detalhe.titulo}</h2>
+            <div className="px-6 pt-4 border-b border-[var(--gray-border)] sticky top-0 bg-white z-10">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wide">{TIPO_LABEL[detalhe.tipo] ?? detalhe.tipo}</p>
+                  <h2 className="text-[16px] font-extrabold text-[var(--text-primary)] mt-0.5">{detalhe.titulo}</h2>
+                </div>
+                <div className="flex items-center gap-2 ml-4 shrink-0">
+                  <button
+                    onClick={async () => {
+                      if (!confirm("Excluir esta demanda? Essa ação não pode ser desfeita.")) return;
+                      await fetch(`/api/demandas/${detalhe.id}`, { method: "DELETE" });
+                      setDemandas(prev => prev.filter(d => d.id !== detalhe.id));
+                      setDetalhe(null);
+                    }}
+                    className="text-[#EF4444] hover:opacity-70 mt-0.5"
+                    title="Excluir demanda"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                  </button>
+                  <button onClick={() => setDetalhe(null)} className="text-[var(--gray-mid)] hover:text-[var(--text-primary)] mt-0.5">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2 ml-4 shrink-0">
-                <button
-                  onClick={async () => {
-                    if (!confirm("Excluir esta demanda? Essa ação não pode ser desfeita.")) return;
-                    await fetch(`/api/demandas/${detalhe.id}`, { method: "DELETE" });
-                    setDemandas(prev => prev.filter(d => d.id !== detalhe.id));
-                    setDetalhe(null);
-                  }}
-                  className="text-[#EF4444] hover:opacity-70 mt-0.5"
-                  title="Excluir demanda"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                </button>
-                <button onClick={() => setDetalhe(null)} className="text-[var(--gray-mid)] hover:text-[var(--text-primary)] mt-0.5">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
+              {/* Tabs */}
+              <div className="flex gap-0">
+                {(["detalhes", "historico"] as const).map(aba => (
+                  <button key={aba} onClick={() => setAbaDetalhe(aba)}
+                    className={`px-4 py-2 text-[12px] font-bold border-b-2 transition-colors ${abaDetalhe === aba ? "border-[var(--violet)] text-[var(--violet)]" : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]"}`}>
+                    {aba === "detalhes" ? "Detalhes" : `Histórico${historico.length > 0 ? ` (${historico.length})` : ""}`}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="px-6 py-5 space-y-5">
+            {/* Aba Histórico */}
+            {abaDetalhe === "historico" && (
+              <div className="px-6 py-5">
+                {historico.length === 0 ? (
+                  <p className="text-[12px] text-[var(--text-secondary)] text-center py-8">Nenhuma alteração registrada ainda.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {historico.map(h => (
+                      <div key={h.id} className="flex gap-3 py-2.5 border-b border-[var(--gray-border)] last:border-0">
+                        <div className="w-6 h-6 rounded-full bg-[var(--violet-light)] flex items-center justify-center shrink-0 mt-0.5">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-[var(--violet)]"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[12px] text-[var(--text-primary)]">
+                            <span className="font-semibold">{h.usuario?.name ?? "Sistema"}</span>
+                            {" alterou "}
+                            <span className="font-semibold">{CAMPO_LABEL[h.campo] ?? h.campo}</span>
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <span className="text-[11px] text-[var(--text-secondary)] line-through">{fmtHistoricoValor(h.campo, h.valorAntes)}</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-[var(--gray-mid)] shrink-0"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+                            <span className="text-[11px] font-semibold text-[var(--text-primary)]">{fmtHistoricoValor(h.campo, h.valorDepois)}</span>
+                          </div>
+                          <p className="text-[10px] text-[var(--gray-mid)] mt-0.5">{new Date(h.criadoEm).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Aba Detalhes */}
+            {abaDetalhe === "detalhes" && <div className="px-6 py-5 space-y-5">
               {/* Descrição */}
               <div>
                 <p className="label-xs mb-1.5">Descrição</p>
@@ -444,7 +551,7 @@ function DemandasInner() {
                 <div>
                   <p className="label-xs mb-1.5">Status</p>
                   <select value={detalhe.status}
-                    onChange={e => salvar({ status: e.target.value })}
+                    onChange={e => salvar({ status: e.target.value, substatus: null })}
                     className="w-full h-[34px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none">
                     {statusCols.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
                   </select>
@@ -458,6 +565,19 @@ function DemandasInner() {
                   </select>
                 </div>
               </div>
+
+              {/* Sub-status — só quando EM_ANDAMENTO */}
+              {detalhe.status === "EM_ANDAMENTO" && substatuses.length > 0 && (
+                <div>
+                  <p className="label-xs mb-1.5">Sub-status</p>
+                  <select value={detalhe.substatus ?? ""}
+                    onChange={e => salvar({ substatus: e.target.value || null })}
+                    className="w-full h-[34px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none">
+                    <option value="">Sem sub-status</option>
+                    {substatuses.map(ss => <option key={ss.id} value={ss.nome}>{ss.nome}</option>)}
+                  </select>
+                </div>
+              )}
 
               {/* Responsável */}
               <div>
@@ -565,26 +685,51 @@ function DemandasInner() {
                   </div>
                 )}
 
-                {/* Input */}
-                <div className="flex gap-2">
-                  <input
-                    value={novoComentario}
-                    onChange={e => setNovoComentario(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviarComentario(); } }}
-                    placeholder="Escreva um comentário... (@nome para mencionar)"
-                    className="flex-1 h-[34px] px-3 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]"
-                  />
-                  <button
-                    onClick={enviarComentario}
-                    disabled={enviandoComentario || !novoComentario.trim()}
-                    className="h-[34px] px-4 bg-[var(--violet)] text-white rounded-sm text-[12px] font-bold hover:bg-[var(--violet-dark)] disabled:opacity-40 transition-colors shrink-0"
-                  >
-                    {enviandoComentario ? "..." : "Enviar"}
-                  </button>
+                {/* Input com autocomplete @mention */}
+                <div className="relative">
+                  {/* Dropdown @mention */}
+                  {mencaoQuery !== null && (() => {
+                    const filtrados = usuarios.filter(u => u.name.toLowerCase().includes(mencaoQuery));
+                    if (filtrados.length === 0) return null;
+                    return (
+                      <div className="absolute bottom-full mb-1 left-0 right-0 bg-white border border-[var(--gray-border)] rounded-sm shadow-lg z-20 max-h-[140px] overflow-y-auto">
+                        {filtrados.map(u => (
+                          <button key={u.id} onMouseDown={e => { e.preventDefault(); inserirMencao(u.name); }}
+                            className="w-full text-left px-3 py-2 text-[12px] hover:bg-[var(--violet-light)] hover:text-[var(--violet)] flex items-center gap-2">
+                            <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-extrabold text-white shrink-0"
+                              style={{ background: "linear-gradient(135deg, #64748B, #94A3B8)" }}>
+                              {u.name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase()}
+                            </div>
+                            {u.name}
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                  <div className="flex gap-2">
+                    <input
+                      ref={comentarioInputRef}
+                      value={novoComentario}
+                      onChange={e => handleComentarioChange(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Escape") { setMencaoQuery(null); return; }
+                        if (e.key === "Enter" && !e.shiftKey && mencaoQuery === null) { e.preventDefault(); enviarComentario(); }
+                      }}
+                      placeholder="Escreva um comentário... (@nome para mencionar)"
+                      className="flex-1 h-[34px] px-3 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]"
+                    />
+                    <button
+                      onClick={enviarComentario}
+                      disabled={enviandoComentario || !novoComentario.trim()}
+                      className="h-[34px] px-4 bg-[var(--violet)] text-white rounded-sm text-[12px] font-bold hover:bg-[var(--violet-dark)] disabled:opacity-40 transition-colors shrink-0"
+                    >
+                      {enviandoComentario ? "..." : "Enviar"}
+                    </button>
+                  </div>
                 </div>
                 <p className="text-[10px] text-[var(--gray-mid)] mt-1.5">Use @nome para notificar alguém · Enter para enviar</p>
               </div>
-            </div>
+            </div>}
           </div>
         </div>
       )}
