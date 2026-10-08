@@ -24,7 +24,7 @@
     "prisma": "^5.22.0",
     "react": "^18",
     "react-dom": "^18",
-    "resend": "^6.12.4"
+    "resend": "^6.32.1"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

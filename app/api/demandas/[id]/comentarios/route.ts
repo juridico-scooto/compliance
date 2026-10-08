@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { enviarEmailNotificacao } from "@/lib/email";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       select: { id: true },
     });
     if (usuario && usuario.id !== session.user.id) {
+      const usuarioEmail = await prisma.user.findUnique({ where: { id: usuario.id }, select: { email: true } });
       await prisma.notificacao.create({
         data: {
           usuarioId: usuario.id,
@@ -48,6 +50,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           demandaId: params.id,
         },
       });
+      if (usuarioEmail?.email) {
+        await enviarEmailNotificacao({
+          para: usuarioEmail.email,
+          titulo: `${session.user.name} mencionou você`,
+          texto: `Na demanda "${demanda.titulo}": ${texto.slice(0, 100)}${texto.length > 100 ? "…" : ""}`,
+          demandaId: params.id,
+        });
+      }
     }
   }
 

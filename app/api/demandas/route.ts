@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { enviarEmailNotificacao } from "@/lib/email";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
 
   // Notificar todos os admins sobre nova demanda
   try {
-    const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } });
+    const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true, email: true } });
     if (admins.length > 0) {
       await prisma.notificacao.createMany({
         data: admins.map(a => ({
@@ -62,6 +63,13 @@ export async function POST(req: NextRequest) {
           demandaId: demanda.id,
         })),
       });
+      // E-mail para cada admin
+      await Promise.all(admins.map(a => enviarEmailNotificacao({
+        para: a.email,
+        titulo: `Nova demanda: ${titulo}`,
+        texto: `Solicitante: ${solicitante}`,
+        demandaId: demanda.id,
+      })));
     }
   } catch {}
 

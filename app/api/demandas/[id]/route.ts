@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { enviarEmailNotificacao } from "@/lib/email";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
@@ -35,6 +36,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const novoRespId = responsavelId || null;
   if (novoRespId && novoRespId !== responsavelAnteriorId && novoRespId !== session.user.id) {
     try {
+      const novoResp = await prisma.user.findUnique({ where: { id: novoRespId }, select: { email: true } });
       await prisma.notificacao.create({
         data: {
           usuarioId: novoRespId,
@@ -44,6 +46,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           demandaId: params.id,
         },
       });
+      if (novoResp?.email) {
+        await enviarEmailNotificacao({
+          para: novoResp.email,
+          titulo: `Você foi atribuído a uma demanda`,
+          texto: `"${demanda.titulo}" foi atribuída a você por ${session.user.name}`,
+          demandaId: params.id,
+        });
+      }
     } catch {}
   }
 
