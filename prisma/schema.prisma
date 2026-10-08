@@ -20,9 +20,10 @@ model User {
   consultas    Consulta[]
   demandas     Demanda[]
   comentarios  Comentario[]  @relation("AutorComentarios")
-  notificacoes    Notificacao[]    @relation("NotificacoesRecebidas")
-  templates       Template[]
-  registrosDiarios RegistroDiario[] @relation("RegistrosDiarios")
+  notificacoes     Notificacao[]     @relation("NotificacoesRecebidas")
+  templates        Template[]
+  registrosDiarios RegistroDiario[]  @relation("RegistrosDiarios")
+  historicoDemandas HistoricoDemanda[] @relation("HistoricoAutor")
 }
 
 enum Role {
@@ -69,7 +70,9 @@ model Demanda {
   prazoSolicitado  DateTime?  // prazo pedido pelo solicitante (referência)
   prazo            DateTime?  // prazo interno definido pela equipe
   notas            String?
+  substatus        String?
   comentarios      Comentario[]
+  historico        HistoricoDemanda[]
   criadoEm         DateTime   @default(now())
   atualizadoEm     DateTime   @updatedAt
 
@@ -145,6 +148,29 @@ enum Prioridade {
   NORMAL
   ALTA
   URGENTE
+}
+
+model SubstatusConfig {
+  id       String  @id @default(cuid())
+  nome     String
+  cor      String  @default("#E2E8F0")
+  corTexto String  @default("#475569")
+  ordem    Int     @default(0)
+  ativo    Boolean @default(true)
+}
+
+model HistoricoDemanda {
+  id          String   @id @default(cuid())
+  demandaId   String
+  demanda     Demanda  @relation(fields: [demandaId], references: [id], onDelete: Cascade)
+  usuarioId   String?
+  usuario     User?    @relation("HistoricoAutor", fields: [usuarioId], references: [id])
+  campo       String
+  valorAntes  String?
+  valorDepois String?
+  criadoEm   DateTime @default(now())
+
+  @@index([demandaId])
 }
 
 model TarefaDiaria {

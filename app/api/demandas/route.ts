@@ -25,6 +25,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
   const body = await req.json();
   const { titulo, descricao, tipo, prioridade, solicitante, emailSolicitante, setor, operacao, cliente, anexos, responsavelId, prazo, prazoSolicitado } = body;
 
