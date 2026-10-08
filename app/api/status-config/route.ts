@@ -26,6 +26,14 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(status);
 }
 
+export async function PATCH(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { id, nome, cor, corTexto } = await req.json();
+  const item = await prisma.statusConfig.update({ where: { id }, data: { nome, cor, corTexto } });
+  return NextResponse.json(item);
+}
+
 export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });

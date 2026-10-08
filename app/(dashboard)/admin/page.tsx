@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
+type StatusCfg = { id: string; nome: string; cor: string; corTexto: string; ordem: number; ativo: boolean };
+type SubstatusCfg = { id: string; nome: string; cor: string; corTexto: string; ordem: number };
+
 export default function AdminPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -11,21 +14,86 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
 
+  // Status
+  const [statuses, setStatuses] = useState<StatusCfg[]>([]);
+  const [novoStatusNome, setNovoStatusNome] = useState("");
+  const [novoStatusCor, setNovoStatusCor] = useState("#E2E8F0");
+  const [novoStatusCorTexto, setNovoStatusCorTexto] = useState("#475569");
+  const [editandoStatus, setEditandoStatus] = useState<StatusCfg | null>(null);
+  const [savingStatus, setSavingStatus] = useState(false);
+
+  // Sub-status
+  const [substatuses, setSubstatuses] = useState<SubstatusCfg[]>([]);
+  const [novoSubNome, setNovoSubNome] = useState("");
+  const [novoSubCor, setNovoSubCor] = useState("#FEF3C7");
+  const [novoSubCorTexto, setNovoSubCorTexto] = useState("#92400E");
+  const [editandoSub, setEditandoSub] = useState<SubstatusCfg | null>(null);
+  const [savingSub, setSavingSub] = useState(false);
+
   const isAdmin = (session?.user as { role?: string })?.role === "ADMIN";
 
   useEffect(() => {
     if (status === "unauthenticated") { router.push("/login"); return; }
     if (status === "authenticated" && !isAdmin) { router.push("/due-diligence"); return; }
-    if (isAdmin) fetchStatus();
+    if (isAdmin) { fetchStatus(); carregarStatuses(); carregarSubstatuses(); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, isAdmin]);
 
   async function fetchStatus() {
     const res = await fetch("/api/admin/importar-pgfn");
-    if (res.ok) {
-      const d = await res.json();
-      setRegistros(d.registros);
-    }
+    if (res.ok) { const d = await res.json(); setRegistros(d.registros); }
+  }
+
+  async function carregarStatuses() {
+    const res = await fetch("/api/status-config");
+    if (res.ok) setStatuses(await res.json());
+  }
+
+  async function carregarSubstatuses() {
+    const res = await fetch("/api/substatus-config");
+    if (res.ok) setSubstatuses(await res.json());
+  }
+
+  async function criarStatus() {
+    if (!novoStatusNome.trim()) return;
+    setSavingStatus(true);
+    await fetch("/api/status-config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: novoStatusNome.toUpperCase().replace(/\s+/g, "_"), nome: novoStatusNome, cor: novoStatusCor, corTexto: novoStatusCorTexto }) });
+    setNovoStatusNome(""); setNovoStatusCor("#E2E8F0"); setNovoStatusCorTexto("#475569");
+    await carregarStatuses(); setSavingStatus(false);
+  }
+
+  async function salvarStatus() {
+    if (!editandoStatus) return;
+    setSavingStatus(true);
+    await fetch("/api/status-config", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editandoStatus) });
+    setEditandoStatus(null); await carregarStatuses(); setSavingStatus(false);
+  }
+
+  async function removerStatus(id: string) {
+    if (!confirm("Remover este status? Demandas com esse status não serão afetadas.")) return;
+    await fetch("/api/status-config", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    await carregarStatuses();
+  }
+
+  async function criarSubstatus() {
+    if (!novoSubNome.trim()) return;
+    setSavingSub(true);
+    await fetch("/api/substatus-config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nome: novoSubNome, cor: novoSubCor, corTexto: novoSubCorTexto }) });
+    setNovoSubNome(""); setNovoSubCor("#FEF3C7"); setNovoSubCorTexto("#92400E");
+    await carregarSubstatuses(); setSavingSub(false);
+  }
+
+  async function salvarSubstatus() {
+    if (!editandoSub) return;
+    setSavingSub(true);
+    await fetch("/api/substatus-config", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editandoSub) });
+    setEditandoSub(null); await carregarSubstatuses(); setSavingSub(false);
+  }
+
+  async function removerSubstatus(id: string) {
+    if (!confirm("Remover este sub-status?")) return;
+    await fetch("/api/substatus-config", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    await carregarSubstatuses();
   }
 
   async function dispararImportacao() {
@@ -141,6 +209,92 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
+
+      {/* Card Status */}
+      <div className="bg-white rounded-card border border-[var(--gray-border)] overflow-hidden mt-6">
+        <div className="px-[18px] py-3 border-b border-[var(--gray-border)] bg-[var(--off-white)] flex items-center gap-2">
+          <div className="w-[26px] h-[26px] rounded-[7px] bg-[var(--violet-light)] flex items-center justify-center shrink-0">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-[13px] h-[13px] text-[var(--violet)]"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <span className="text-[11px] font-extrabold text-[var(--text-primary)] uppercase tracking-[0.07em]">Status das Demandas</span>
+        </div>
+        <div className="px-[18px] py-5 space-y-3">
+          {/* Lista */}
+          {statuses.map(s => (
+            <div key={s.id} className="flex items-center gap-3">
+              {editandoStatus?.id === s.id ? (
+                <>
+                  <input value={editandoStatus.nome} onChange={e => setEditandoStatus(p => p ? { ...p, nome: e.target.value } : p)} className="flex-1 h-[32px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]" />
+                  <input type="color" value={editandoStatus.cor} onChange={e => setEditandoStatus(p => p ? { ...p, cor: e.target.value } : p)} className="w-8 h-8 rounded cursor-pointer border border-[var(--gray-border)]" title="Cor de fundo" />
+                  <input type="color" value={editandoStatus.corTexto} onChange={e => setEditandoStatus(p => p ? { ...p, corTexto: e.target.value } : p)} className="w-8 h-8 rounded cursor-pointer border border-[var(--gray-border)]" title="Cor do texto" />
+                  <button onClick={salvarStatus} disabled={savingStatus} className="h-[32px] px-3 bg-[var(--violet)] text-white rounded-sm text-[11px] font-bold disabled:opacity-50">Salvar</button>
+                  <button onClick={() => setEditandoStatus(null)} className="h-[32px] px-3 border border-[var(--gray-border)] rounded-sm text-[11px] text-[var(--text-secondary)] hover:bg-[var(--gray-light)]">Cancelar</button>
+                </>
+              ) : (
+                <>
+                  <span className="text-[12px] px-2.5 py-1 rounded-full font-semibold" style={{ background: s.cor, color: s.corTexto }}>{s.nome}</span>
+                  <span className="text-[10px] text-[var(--gray-mid)] font-mono ml-1">{s.id}</span>
+                  <div className="ml-auto flex gap-1">
+                    <button onClick={() => setEditandoStatus(s)} className="h-[28px] px-2.5 border border-[var(--gray-border)] rounded-sm text-[11px] text-[var(--text-secondary)] hover:bg-[var(--gray-light)] transition-colors">Editar</button>
+                    <button onClick={() => removerStatus(s.id)} className="h-[28px] px-2.5 border border-[#F5B8CC] rounded-sm text-[11px] text-[#9B0A35] hover:bg-[var(--red-bg)] transition-colors">Remover</button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+          {/* Novo status */}
+          <div className="flex items-center gap-2 pt-2 border-t border-[var(--gray-border)]">
+            <input value={novoStatusNome} onChange={e => setNovoStatusNome(e.target.value)} placeholder="Nome do status..." className="flex-1 h-[32px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]" />
+            <input type="color" value={novoStatusCor} onChange={e => setNovoStatusCor(e.target.value)} className="w-8 h-8 rounded cursor-pointer border border-[var(--gray-border)]" title="Cor de fundo" />
+            <input type="color" value={novoStatusCorTexto} onChange={e => setNovoStatusCorTexto(e.target.value)} className="w-8 h-8 rounded cursor-pointer border border-[var(--gray-border)]" title="Cor do texto" />
+            <button onClick={criarStatus} disabled={savingStatus || !novoStatusNome.trim()} className="h-[32px] px-4 bg-[var(--violet)] text-white rounded-sm text-[11px] font-bold disabled:opacity-50 hover:bg-[var(--violet-dark)] transition-colors">+ Adicionar</button>
+          </div>
+          <p className="text-[10px] text-[var(--gray-mid)]">Primeiro color picker = fundo do badge · Segundo = cor do texto</p>
+        </div>
+      </div>
+
+      {/* Card Sub-status */}
+      <div className="bg-white rounded-card border border-[var(--gray-border)] overflow-hidden mt-6">
+        <div className="px-[18px] py-3 border-b border-[var(--gray-border)] bg-[var(--off-white)] flex items-center gap-2">
+          <div className="w-[26px] h-[26px] rounded-[7px] bg-[var(--violet-light)] flex items-center justify-center shrink-0">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-[13px] h-[13px] text-[var(--violet)]"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          </div>
+          <span className="text-[11px] font-extrabold text-[var(--text-primary)] uppercase tracking-[0.07em]">Sub-status (Em andamento)</span>
+        </div>
+        <div className="px-[18px] py-5 space-y-3">
+          <p className="text-[11px] text-[var(--text-secondary)]">Sub-status aparecem nas demandas com status <strong>Em andamento</strong>.</p>
+          {/* Lista */}
+          {substatuses.map(ss => (
+            <div key={ss.id} className="flex items-center gap-3">
+              {editandoSub?.id === ss.id ? (
+                <>
+                  <input value={editandoSub.nome} onChange={e => setEditandoSub(p => p ? { ...p, nome: e.target.value } : p)} className="flex-1 h-[32px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]" />
+                  <input type="color" value={editandoSub.cor} onChange={e => setEditandoSub(p => p ? { ...p, cor: e.target.value } : p)} className="w-8 h-8 rounded cursor-pointer border border-[var(--gray-border)]" title="Cor de fundo" />
+                  <input type="color" value={editandoSub.corTexto} onChange={e => setEditandoSub(p => p ? { ...p, corTexto: e.target.value } : p)} className="w-8 h-8 rounded cursor-pointer border border-[var(--gray-border)]" title="Cor do texto" />
+                  <button onClick={salvarSubstatus} disabled={savingSub} className="h-[32px] px-3 bg-[var(--violet)] text-white rounded-sm text-[11px] font-bold disabled:opacity-50">Salvar</button>
+                  <button onClick={() => setEditandoSub(null)} className="h-[32px] px-3 border border-[var(--gray-border)] rounded-sm text-[11px] text-[var(--text-secondary)] hover:bg-[var(--gray-light)]">Cancelar</button>
+                </>
+              ) : (
+                <>
+                  <span className="text-[12px] px-2.5 py-1 rounded-full font-semibold" style={{ background: ss.cor, color: ss.corTexto }}>{ss.nome}</span>
+                  <div className="ml-auto flex gap-1">
+                    <button onClick={() => setEditandoSub(ss)} className="h-[28px] px-2.5 border border-[var(--gray-border)] rounded-sm text-[11px] text-[var(--text-secondary)] hover:bg-[var(--gray-light)] transition-colors">Editar</button>
+                    <button onClick={() => removerSubstatus(ss.id)} className="h-[28px] px-2.5 border border-[#F5B8CC] rounded-sm text-[11px] text-[#9B0A35] hover:bg-[var(--red-bg)] transition-colors">Remover</button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+          {/* Novo sub-status */}
+          <div className="flex items-center gap-2 pt-2 border-t border-[var(--gray-border)]">
+            <input value={novoSubNome} onChange={e => setNovoSubNome(e.target.value)} placeholder="Nome do sub-status..." className="flex-1 h-[32px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]" />
+            <input type="color" value={novoSubCor} onChange={e => setNovoSubCor(e.target.value)} className="w-8 h-8 rounded cursor-pointer border border-[var(--gray-border)]" title="Cor de fundo" />
+            <input type="color" value={novoSubCorTexto} onChange={e => setNovoSubCorTexto(e.target.value)} className="w-8 h-8 rounded cursor-pointer border border-[var(--gray-border)]" title="Cor do texto" />
+            <button onClick={criarSubstatus} disabled={savingSub || !novoSubNome.trim()} className="h-[32px] px-4 bg-[var(--violet)] text-white rounded-sm text-[11px] font-bold disabled:opacity-50 hover:bg-[var(--violet-dark)] transition-colors">+ Adicionar</button>
+          </div>
+        </div>
+      </div>
+
       </div>
       </div>
     </>
