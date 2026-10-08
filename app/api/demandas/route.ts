@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Notificar todos os admins sobre nova demanda
+  // Notificar admins sobre nova demanda (sininho) e e-mail apenas para o responsável (se diferente de quem criou)
   try {
     const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true, email: true } });
     if (admins.length > 0) {
@@ -63,13 +63,19 @@ export async function POST(req: NextRequest) {
           demandaId: demanda.id,
         })),
       });
-      // E-mail para cada admin
-      await Promise.all(admins.map(a => enviarEmailNotificacao({
-        para: a.email,
-        titulo: `Nova demanda: ${titulo}`,
-        texto: `Solicitante: ${solicitante}`,
-        demandaId: demanda.id,
-      })));
+    }
+    // E-mail só para o responsável, se houver e for diferente de quem criou
+    if (responsavelId && responsavelId !== session.user.id) {
+      const responsavel = admins.find(a => a.id === responsavelId)
+        ?? await prisma.user.findUnique({ where: { id: responsavelId }, select: { email: true } });
+      if (responsavel?.email) {
+        await enviarEmailNotificacao({
+          para: responsavel.email,
+          titulo: `Nova demanda atribuída a você: ${titulo}`,
+          texto: `Solicitante: ${solicitante}`,
+          demandaId: demanda.id,
+        });
+      }
     }
   } catch {}
 
