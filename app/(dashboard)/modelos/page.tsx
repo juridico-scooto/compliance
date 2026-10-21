@@ -193,14 +193,7 @@ export default function ModelosPage() {
   }
 
   async function copiar(t: Template) {
-    const partes: string[] = [];
-    if (t.categoria === "EMAIL") {
-      if (t.assunto) partes.push(`Assunto: ${aplicarVariaveis(t.assunto, varsPreenchidas)}`);
-      if (t.cc.length > 0) partes.push(`CC: ${t.cc.join(", ")}`);
-      if (partes.length > 0) partes.push("");
-    }
-    partes.push(aplicarVariaveis(t.conteudo, varsPreenchidas));
-    await navigator.clipboard.writeText(partes.join("\n"));
+    await navigator.clipboard.writeText(aplicarVariaveis(t.conteudo, varsPreenchidas));
     setCopiado(true);
     setTimeout(() => setCopiado(false), 2000);
   }

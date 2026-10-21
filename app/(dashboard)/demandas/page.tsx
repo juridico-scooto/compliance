@@ -84,6 +84,7 @@ function DemandasInner() {
   const [filtroResponsavel, setFiltroResponsavel] = useState("");
   const [filtroSolicitante, setFiltroSolicitante] = useState("");
   const [filtroPrioridade, setFiltroPrioridade] = useState("");
+  const [filtroSubstatus, setFiltroSubstatus] = useState("");
   const [ordenacao, setOrdenacao] = useState<"criadoEm" | "prazo">("criadoEm");
 
   const [detalhe, setDetalhe] = useState<Demanda | null>(null);
@@ -100,6 +101,35 @@ function DemandasInner() {
   const [mencaoPos, setMencaoPos] = useState(0);
   const [novaOpen, setNovaOpen] = useState(false);
   const [novaDemanda, setNovaDemanda] = useState({ titulo: "", descricao: "", tipo: "CONSULTA_JURIDICA", prioridade: "NORMAL", solicitante: "", setor: "", responsavelId: "", prazo: "" });
+
+  // Gestão de sub-status
+  const [substatusOpen, setSubstatusOpen] = useState(false);
+  const [novoSubNome, setNovoSubNome] = useState("");
+  const [novoSubCor, setNovoSubCor] = useState("#FEF3C7");
+  const [novoSubCorTexto, setNovoSubCorTexto] = useState("#92400E");
+  const [editandoSub, setEditandoSub] = useState<SubstatusConfig | null>(null);
+  const [savingSub, setSavingSub] = useState(false);
+
+  async function criarSubstatus() {
+    if (!novoSubNome.trim()) return;
+    setSavingSub(true);
+    await fetch("/api/substatus-config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nome: novoSubNome, cor: novoSubCor, corTexto: novoSubCorTexto }) });
+    setNovoSubNome(""); setNovoSubCor("#FEF3C7"); setNovoSubCorTexto("#92400E");
+    await carregarSubstatuses(); setSavingSub(false);
+  }
+
+  async function salvarSubstatus() {
+    if (!editandoSub) return;
+    setSavingSub(true);
+    await fetch("/api/substatus-config", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editandoSub) });
+    setEditandoSub(null); await carregarSubstatuses(); setSavingSub(false);
+  }
+
+  async function removerSubstatus(id: string) {
+    if (!confirm("Remover este sub-status?")) return;
+    await fetch("/api/substatus-config", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    await carregarSubstatuses();
+  }
 
   // Triagem de e-mails
   type EmailTriagem = { id: string; assunto: string; remetente: string; emailRemetente: string; data: string; corpo: string };
@@ -297,6 +327,7 @@ function DemandasInner() {
     .filter(d => !filtroResponsavel || d.responsavel?.id === filtroResponsavel)
     .filter(d => !filtroSolicitante || d.solicitante.toLowerCase().includes(filtroSolicitante.toLowerCase()))
     .filter(d => !filtroPrioridade || d.prioridade === filtroPrioridade)
+    .filter(d => !filtroSubstatus || d.substatus === filtroSubstatus)
     .sort((a, b) => {
       if (ordenacao === "prazo") {
         const da = a.prazo ? new Date(a.prazo).getTime() : Infinity;
@@ -331,6 +362,10 @@ function DemandasInner() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Nova
           </button>
+          <button onClick={() => setSubstatusOpen(true)} title="Gerenciar sub-status"
+            className="h-[32px] w-[32px] flex items-center justify-center border border-[var(--gray-border)] rounded-sm text-[var(--text-secondary)] hover:bg-[var(--gray-light)] hover:text-[var(--violet)] transition-colors shrink-0">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
         </div>
 
         {/* Filtros: ocupam o restante da largura, cortam se necessário */}
@@ -360,6 +395,14 @@ function DemandasInner() {
             <option value="">Todas prioridades</option>
             {Object.entries(PRIORIDADE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
+          {substatuses.length > 0 && (
+            <select value={filtroSubstatus} onChange={e => setFiltroSubstatus(e.target.value)}
+              className="h-[32px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none"
+              style={{ minWidth: 0, flexShrink: 1 }}>
+              <option value="">Todos sub-status</option>
+              {substatuses.map(ss => <option key={ss.id} value={ss.nome}>{ss.nome}</option>)}
+            </select>
+          )}
           <select value={ordenacao} onChange={e => setOrdenacao(e.target.value as "criadoEm" | "prazo")}
             className="h-[32px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none"
             style={{ minWidth: 0, flexShrink: 1 }}>
@@ -566,18 +609,20 @@ function DemandasInner() {
                 </div>
               </div>
 
-              {/* Sub-status — só quando EM_ANDAMENTO */}
-              {detalhe.status === "EM_ANDAMENTO" && substatuses.length > 0 && (
-                <div>
-                  <p className="label-xs mb-1.5">Sub-status</p>
+              {/* Sub-status */}
+              <div>
+                <p className="label-xs mb-1.5">Sub-status</p>
+                {substatuses.length > 0 ? (
                   <select value={detalhe.substatus ?? ""}
                     onChange={e => salvar({ substatus: e.target.value || null })}
                     className="w-full h-[34px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none">
                     <option value="">Sem sub-status</option>
                     {substatuses.map(ss => <option key={ss.id} value={ss.nome}>{ss.nome}</option>)}
                   </select>
-                </div>
-              )}
+                ) : (
+                  <p className="text-[11px] text-[var(--text-secondary)]">Nenhum sub-status configurado. <a href="/admin" className="text-[var(--violet)] hover:underline">Configurar em Admin →</a></p>
+                )}
+              </div>
 
               {/* Responsável */}
               <div>
@@ -730,6 +775,57 @@ function DemandasInner() {
                 <p className="text-[10px] text-[var(--gray-mid)] mt-1.5">Use @nome para notificar alguém · Enter para enviar</p>
               </div>
             </div>}
+          </div>
+        </div>
+      )}
+
+      {/* Modal sub-status */}
+      {substatusOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setSubstatusOpen(false)}>
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
+          <div className="relative bg-white rounded-card border border-[var(--gray-border)] shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-[var(--gray-border)] flex items-center justify-between">
+              <h2 className="text-[14px] font-extrabold text-[var(--text-primary)]">Gerenciar Sub-status</h2>
+              <button onClick={() => setSubstatusOpen(false)} className="text-[var(--gray-mid)] hover:text-[var(--text-primary)]">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-3 max-h-[60vh] overflow-y-auto">
+              {substatuses.length === 0 && (
+                <p className="text-[12px] text-[var(--text-secondary)]">Nenhum sub-status cadastrado ainda.</p>
+              )}
+              {substatuses.map(ss => (
+                <div key={ss.id} className="flex items-center gap-2">
+                  {editandoSub?.id === ss.id ? (
+                    <>
+                      <input value={editandoSub.nome} onChange={e => setEditandoSub(p => p ? { ...p, nome: e.target.value } : p)} className="flex-1 h-[32px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]" />
+                      <input type="color" value={editandoSub.cor} onChange={e => setEditandoSub(p => p ? { ...p, cor: e.target.value } : p)} className="w-8 h-8 rounded cursor-pointer border border-[var(--gray-border)]" title="Cor de fundo" />
+                      <input type="color" value={editandoSub.corTexto} onChange={e => setEditandoSub(p => p ? { ...p, corTexto: e.target.value } : p)} className="w-8 h-8 rounded cursor-pointer border border-[var(--gray-border)]" title="Cor do texto" />
+                      <button onClick={salvarSubstatus} disabled={savingSub} className="h-[32px] px-3 bg-[var(--violet)] text-white rounded-sm text-[11px] font-bold disabled:opacity-50">Salvar</button>
+                      <button onClick={() => setEditandoSub(null)} className="h-[32px] px-2 border border-[var(--gray-border)] rounded-sm text-[11px] text-[var(--text-secondary)] hover:bg-[var(--gray-light)]">✕</button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-[12px] px-2.5 py-1 rounded-full font-semibold flex-1" style={{ background: ss.cor, color: ss.corTexto }}>{ss.nome}</span>
+                      <button onClick={() => setEditandoSub(ss)} className="h-[28px] px-2.5 border border-[var(--gray-border)] rounded-sm text-[11px] text-[var(--text-secondary)] hover:bg-[var(--gray-light)] transition-colors">Editar</button>
+                      <button onClick={() => removerSubstatus(ss.id)} className="h-[28px] px-2.5 border border-[#F5B8CC] rounded-sm text-[11px] text-[#9B0A35] hover:bg-[var(--red-bg)] transition-colors">Remover</button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="px-6 py-4 border-t border-[var(--gray-border)] space-y-3">
+              <p className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide">Novo sub-status</p>
+              <div className="flex items-center gap-2">
+                <input value={novoSubNome} onChange={e => setNovoSubNome(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && criarSubstatus()}
+                  placeholder="Nome do sub-status..." className="flex-1 h-[32px] px-2 text-[12px] border border-[var(--gray-border)] rounded-sm focus:outline-none focus:border-[var(--violet)]" />
+                <input type="color" value={novoSubCor} onChange={e => setNovoSubCor(e.target.value)} className="w-8 h-8 rounded cursor-pointer border border-[var(--gray-border)]" title="Cor de fundo" />
+                <input type="color" value={novoSubCorTexto} onChange={e => setNovoSubCorTexto(e.target.value)} className="w-8 h-8 rounded cursor-pointer border border-[var(--gray-border)]" title="Cor do texto" />
+                <button onClick={criarSubstatus} disabled={savingSub || !novoSubNome.trim()} className="h-[32px] px-4 bg-[var(--violet)] text-white rounded-sm text-[11px] font-bold disabled:opacity-50 hover:bg-[var(--violet-dark)] transition-colors">+ Adicionar</button>
+              </div>
+              <p className="text-[10px] text-[var(--gray-mid)]">1º color picker = fundo · 2º = cor do texto · Enter para adicionar</p>
+            </div>
           </div>
         </div>
       )}

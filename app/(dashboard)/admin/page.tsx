@@ -259,10 +259,10 @@ export default function AdminPage() {
           <div className="w-[26px] h-[26px] rounded-[7px] bg-[var(--violet-light)] flex items-center justify-center shrink-0">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-[13px] h-[13px] text-[var(--violet)]"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
           </div>
-          <span className="text-[11px] font-extrabold text-[var(--text-primary)] uppercase tracking-[0.07em]">Sub-status (Em andamento)</span>
+          <span className="text-[11px] font-extrabold text-[var(--text-primary)] uppercase tracking-[0.07em]">Sub-status das Demandas</span>
         </div>
         <div className="px-[18px] py-5 space-y-3">
-          <p className="text-[11px] text-[var(--text-secondary)]">Sub-status aparecem nas demandas com status <strong>Em andamento</strong>.</p>
+          <p className="text-[11px] text-[var(--text-secondary)]">Sub-status aparecem no modal de qualquer demanda. Também gerenciável pelo ícone ⚙ na página de Demandas.</p>
           {/* Lista */}
           {substatuses.map(ss => (
             <div key={ss.id} className="flex items-center gap-3">
